@@ -24,11 +24,12 @@ function setAddressFieldsRequired(required) {
     });
 }
 
-function getOrderIdFromQuery() {
+function getOrderRefFromQuery() {
     const params = new URLSearchParams(window.location.search);
     return String(
-        params.get('order_id')
+        params.get('order_ref')
         || params.get('external_reference')
+        || params.get('order_id')
         || ''
     ).trim().toUpperCase();
 }
@@ -39,17 +40,18 @@ function getPreferenceIdFromQuery() {
 }
 
 async function loadOrderData() {
-    const orderId = getOrderIdFromQuery();
+    const orderRef = getOrderRefFromQuery();
     const preferenceId = getPreferenceIdFromQuery();
     const summaryOrderId = document.getElementById('order-id-text');
     const hiddenOrderId = document.getElementById('delivery-order-id');
+    const hiddenOrderRef = document.getElementById('delivery-order-ref');
 
-    if (summaryOrderId) summaryOrderId.textContent = orderId || 'No informado';
-    if (hiddenOrderId) hiddenOrderId.value = orderId;
+    if (summaryOrderId) summaryOrderId.textContent = orderRef || 'No informado';
+    if (hiddenOrderRef) hiddenOrderRef.value = orderRef;
 
     let response;
-    if (orderId) {
-        response = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+    if (orderRef) {
+        response = await fetch(`/api/orders/${encodeURIComponent(orderRef)}`, {
             method: 'GET',
             headers: { Accept: 'application/json' }
         });
@@ -67,8 +69,11 @@ async function loadOrderData() {
         throw new Error(payload.error || 'No pudimos cargar los datos del pedido.');
     }
 
-    if (summaryOrderId) summaryOrderId.textContent = payload.orderId || orderId || 'No informado';
-    if (hiddenOrderId) hiddenOrderId.value = payload.orderId || orderId || '';
+    if (summaryOrderId) {
+        summaryOrderId.textContent = payload.orderRef || payload.orderId || orderRef || 'No informado';
+    }
+    if (hiddenOrderId) hiddenOrderId.value = payload.orderId || '';
+    if (hiddenOrderRef) hiddenOrderRef.value = payload.orderRef || payload.externalReference || orderRef || '';
 
     return payload;
 }
@@ -116,18 +121,21 @@ function applyOrderToForm(orderData) {
 function readPaymentQueryParams() {
     const params = new URLSearchParams(window.location.search);
     const paymentId = String(params.get('payment_id') || params.get('collection_id') || '').trim();
+    const merchantOrderId = String(params.get('merchant_order_id') || '').trim();
     const preferenceId = String(params.get('preference_id') || '').trim();
     const paymentStatus = String(params.get('status') || params.get('collection_status') || '').trim();
 
     const paymentIdInput = document.getElementById('delivery-payment-id');
+    const merchantOrderIdInput = document.getElementById('delivery-merchant-order-id');
     const preferenceIdInput = document.getElementById('delivery-preference-id');
     const paymentStatusInput = document.getElementById('delivery-payment-status');
 
     if (paymentIdInput) paymentIdInput.value = paymentId;
+    if (merchantOrderIdInput) merchantOrderIdInput.value = merchantOrderId;
     if (preferenceIdInput) preferenceIdInput.value = preferenceId;
     if (paymentStatusInput) paymentStatusInput.value = paymentStatus;
 
-    return { paymentId, preferenceId, paymentStatus };
+    return { paymentId, merchantOrderId, preferenceId, paymentStatus };
 }
 
 function buildDeliveryDetailsPayload() {
@@ -141,6 +149,7 @@ function buildDeliveryDetailsPayload() {
 
     payload.postalCode = normalizeOrderPostalCode(payload.postalCode);
     payload.orderId = String(payload.orderId || '').toUpperCase();
+    payload.orderRef = String(payload.orderRef || '').toUpperCase();
 
     if (payload.receiverType !== 'otra_persona') {
         payload.receiverName = '';
@@ -163,7 +172,7 @@ async function submitDeliveryData(event, orderData) {
         const csrfToken = await getCsrfToken();
         const payload = buildDeliveryDetailsPayload();
 
-        const response = await fetch(`/api/orders/${encodeURIComponent(orderData.orderId)}/delivery-details`, {
+        const response = await fetch('/api/order/details', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -177,10 +186,7 @@ async function submitDeliveryData(event, orderData) {
             throw new Error(result.error || 'No pudimos guardar los datos.');
         }
 
-        setFormFeedback(
-            'Datos recibidos. Te contactaremos para coordinar la entrega/instalación/retiro.',
-            'success'
-        );
+        setFormFeedback(result.message || 'Datos recibidos correctamente.', 'success');
 
         try {
             localStorage.removeItem('zarpadoCart');

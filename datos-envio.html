@@ -12,6 +12,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" integrity="sha384-7IOpP42IUwYAb/f8f26rg1Z0NNbncPQbygjIEz98bakYOcz9dz8ZmYX33NoCX2lW" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="/assets/logo_negro.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/logo-negrop.png">
+    <link rel="apple-touch-icon" href="/assets/logo-negrop.png">
 </head>
 
 <body>
@@ -50,7 +53,9 @@
 
                 <form id="delivery-data-form" novalidate>
                     <input type="hidden" id="delivery-order-id" name="orderId" value="">
+                    <input type="hidden" id="delivery-order-ref" name="orderRef" value="">
                     <input type="hidden" id="delivery-payment-id" name="paymentId" value="">
+                    <input type="hidden" id="delivery-merchant-order-id" name="merchantOrderId" value="">
                     <input type="hidden" id="delivery-preference-id" name="preferenceId" value="">
                     <input type="hidden" id="delivery-payment-status" name="paymentStatus" value="">
 
@@ -60,8 +65,8 @@
                             <input id="fullName" name="fullName" class="form-input" required autocomplete="name">
                         </div>
                         <div class="form-group">
-                            <label for="documentId">DNI / Documento *</label>
-                            <input id="documentId" name="documentId" class="form-input" required autocomplete="off">
+                            <label for="documentId">DNI / CUIT (opcional)</label>
+                            <input id="documentId" name="documentId" class="form-input" autocomplete="off">
                         </div>
                         <div class="form-group">
                             <label for="phone">Teléfono *</label>

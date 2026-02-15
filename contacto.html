@@ -17,6 +17,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="/assets/logo_negro.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/logo-negrop.png">
+    <link rel="apple-touch-icon" href="/assets/logo-negrop.png">
 </head>
 
 <body>
@@ -115,8 +118,7 @@
             </div>
 
             <div class="contact-form reveal" style="transition-delay: 0.2s;">
-                <form action="/api/contact" method="POST">
-                    <input id="contact-csrf-token" type="hidden" name="csrf_token" value="">
+                <form id="contact-form" action="https://formspree.io/f/xqedeven" method="POST">
 
                     <div class="form-group">
                         <label for="contact-name"
@@ -160,12 +162,12 @@
                         <label for="contact-message"
                             style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Mensaje
                             / Medidas aproximadas</label>
-                        <textarea id="contact-message" name="message" class="form-textarea" rows="5" required
+                        <textarea id="contact-message" name="message" class="form-textarea" rows="5" required minlength="10"
                             placeholder="Cuéntanos más detalles sobre lo que buscas..."></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Solicitar Presupuesto</button>
-                    <p id="contact-submit-info" style="font-size: 0.8rem; color: #555; text-align: center; margin-top: 15px;">Responderemos a la
+                    <button id="contact-submit-btn" type="submit" class="btn btn-primary" style="width: 100%;">Solicitar Presupuesto</button>
+                    <p id="contact-submit-info" class="contact-submit-info" aria-live="polite">Responderemos a la
                         brevedad posible.</p>
 
                 </form>

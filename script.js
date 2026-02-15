@@ -30,6 +30,126 @@ function closeCart() {
     setCartOpenState(false);
 }
 
+const THEME_STORAGE_KEY = 'zm_theme';
+const LIGHT_THEME = 'light';
+const DARK_THEME = 'dark';
+const THEME_MEDIA_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
+
+function getStoredTheme() {
+    try {
+        const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+        if (storedTheme === LIGHT_THEME || storedTheme === DARK_THEME) {
+            return storedTheme;
+        }
+    } catch (error) {
+        // Ignore blocked storage scenarios.
+    }
+
+    return '';
+}
+
+function getSystemTheme() {
+    return THEME_MEDIA_QUERY.matches ? DARK_THEME : LIGHT_THEME;
+}
+
+function getInitialTheme() {
+    return getStoredTheme() || getSystemTheme();
+}
+
+function updateThemeToggleUi(theme) {
+    document.querySelectorAll('.js-theme-toggle').forEach(button => {
+        const isDark = theme === DARK_THEME;
+        button.setAttribute('aria-pressed', String(isDark));
+        button.setAttribute(
+            'aria-label',
+            isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'
+        );
+        button.dataset.theme = theme;
+
+        const icon = button.querySelector('i');
+        if (icon) {
+            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        const text = button.querySelector('.theme-toggle-text');
+        if (text) {
+            text.textContent = isDark ? 'Tema claro' : 'Tema oscuro';
+        }
+    });
+}
+
+function updateThemeAwareAssets(theme) {
+    const useDarkVariant = theme === DARK_THEME;
+    document.querySelectorAll('img[data-logo-light][data-logo-dark]').forEach(image => {
+        const nextSource = useDarkVariant
+            ? image.dataset.logoDark
+            : image.dataset.logoLight;
+
+        if (!nextSource || image.getAttribute('src') === nextSource) {
+            return;
+        }
+
+        image.setAttribute('src', nextSource);
+    });
+}
+
+function applyTheme(theme, persist = false) {
+    const resolvedTheme = theme === LIGHT_THEME ? LIGHT_THEME : DARK_THEME;
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    document.documentElement.style.colorScheme = resolvedTheme;
+    updateThemeToggleUi(resolvedTheme);
+    updateThemeAwareAssets(resolvedTheme);
+
+    if (!persist) {
+        return;
+    }
+
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, resolvedTheme);
+    } catch (error) {
+        // Ignore blocked storage scenarios.
+    }
+}
+
+function createThemeToggleButton(className = '') {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `theme-toggle js-theme-toggle ${className}`.trim();
+    button.innerHTML = '<i class="fas fa-moon" aria-hidden="true"></i><span class="theme-toggle-text">Tema oscuro</span>';
+    return button;
+}
+
+function ensureThemeToggleUi() {
+    const navIcons = document.querySelector('.nav-icons');
+    if (navIcons && !navIcons.querySelector('.js-theme-toggle')) {
+        navIcons.appendChild(createThemeToggleButton('theme-toggle-header'));
+    }
+}
+
+function initThemeToggle() {
+    ensureThemeToggleUi();
+    applyTheme(getInitialTheme());
+
+    document.querySelectorAll('.js-theme-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || DARK_THEME;
+            const nextTheme = currentTheme === DARK_THEME ? LIGHT_THEME : DARK_THEME;
+            applyTheme(nextTheme, true);
+        });
+    });
+
+    const supportsMqListener = typeof THEME_MEDIA_QUERY.addEventListener === 'function';
+    if (supportsMqListener) {
+        THEME_MEDIA_QUERY.addEventListener('change', () => {
+            if (getStoredTheme()) {
+                return;
+            }
+
+            applyTheme(getSystemTheme());
+        });
+    }
+}
+
 if (hamburger && navMenu) {
     hamburger.addEventListener('click', () => {
         const shouldOpen = !navMenu.classList.contains('active');
@@ -210,6 +330,101 @@ async function getCsrfToken(forceRefresh = false) {
 
     csrfTokenCache = String(data.csrfToken);
     return csrfTokenCache;
+}
+
+function setContactSubmitInfo(message, type = 'neutral') {
+    const submitInfo = document.getElementById('contact-submit-info');
+    if (!submitInfo) return;
+
+    submitInfo.textContent = message;
+    submitInfo.classList.remove('is-success', 'is-error', 'is-loading');
+    if (type === 'success') submitInfo.classList.add('is-success');
+    if (type === 'error') submitInfo.classList.add('is-error');
+    if (type === 'loading') submitInfo.classList.add('is-loading');
+}
+
+function isValidEmailAddress(email) {
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(String(email || '').trim());
+}
+
+function setContactSubmittingState(isSubmitting) {
+    const submitButton = document.getElementById('contact-submit-btn');
+    if (!submitButton) return;
+
+    submitButton.disabled = isSubmitting;
+    submitButton.textContent = isSubmitting ? 'Enviando…' : 'Solicitar Presupuesto';
+}
+
+function initContactFormSubmission() {
+    const contactForm = document.getElementById('contact-form');
+    if (!contactForm) return;
+
+    let isSubmitting = false;
+    contactForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (isSubmitting) return;
+
+        const formData = new FormData(contactForm);
+        const email = String(formData.get('email') || '').trim();
+        const message = String(formData.get('message') || '').trim();
+
+        if (!isValidEmailAddress(email)) {
+            setContactSubmitInfo('Ingresá un email válido.', 'error');
+            return;
+        }
+
+        if (message.length < 10) {
+            setContactSubmitInfo('El mensaje debe tener al menos 10 caracteres.', 'error');
+            return;
+        }
+
+        isSubmitting = true;
+        setContactSubmittingState(true);
+        setContactSubmitInfo('Enviando…', 'loading');
+
+        try {
+            const csrfToken = await getCsrfToken();
+            if (!csrfToken) {
+                throw new Error('No se pudo validar el formulario');
+            }
+
+            const payload = Object.fromEntries(formData.entries());
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify(payload)
+            });
+
+            let responsePayload = {};
+            try {
+                responsePayload = await response.json();
+            } catch (error) {
+                responsePayload = {};
+            }
+
+            if (response.ok && responsePayload.ok === true) {
+                contactForm.reset();
+                setContactSubmitInfo('Mensaje enviado correctamente ✅', 'success');
+                return;
+            }
+
+            const responseError = String(responsePayload?.error || '').trim();
+
+            setContactSubmitInfo(
+                responseError || 'Error al enviar. Intentá nuevamente.',
+                'error'
+            );
+        } catch (error) {
+            setContactSubmitInfo('Error al enviar. Intentá nuevamente.', 'error');
+        } finally {
+            isSubmitting = false;
+            setContactSubmittingState(false);
+        }
+    });
 }
 
 function sanitizeCart(rawCart) {
@@ -440,6 +655,7 @@ const cartTotalElement = document.getElementById('cartTotal');
 const cartCountElement = document.querySelector('.cart-count');
 let deliveryConfig = { ...DEFAULT_DELIVERY_CONFIG };
 let shippingQuoteDebounceId = null;
+let deliveryPanelOpen = false;
 const deliveryState = {
     method: DELIVERY_METHOD_SHIPPING,
     postalCode: '',
@@ -464,6 +680,9 @@ function getDeliveryInputRefs() {
         installationUnavailable: document.getElementById('delivery-installation-unavailable'),
         installationLabel: document.getElementById('delivery-installation-label'),
         installationNote: document.getElementById('delivery-installation-note'),
+        compactSummary: document.getElementById('delivery-compact-summary'),
+        configPanel: document.getElementById('delivery-config-panel'),
+        configToggle: document.getElementById('delivery-config-toggle'),
         checkoutMessage: document.getElementById('delivery-checkout-message'),
         subtotalValue: document.getElementById('cartSubtotal'),
         shippingValue: document.getElementById('cartShippingValue'),
@@ -491,6 +710,52 @@ function getCostBreakdown() {
         installation,
         total: subtotal + shipping + installation
     };
+}
+
+function getDeliveryCompactSummary() {
+    if (deliveryState.method === DELIVERY_METHOD_PICKUP) {
+        return 'Retiro por fábrica (sin costo de envío).';
+    }
+
+    if (deliveryState.shippingLoading) {
+        return 'Envío a domicilio · calculando costo...';
+    }
+
+    if (deliveryState.shippingReady) {
+        const installationText = (
+            deliveryState.installationSelected
+            && deliveryState.installationAvailable
+        )
+            ? ` + instalación ${formatArs(deliveryConfig.installationBaseCost)}`
+            : '';
+        return `Envío ${deliveryState.shippingLabel}: ${formatArs(deliveryState.shippingCost)}${installationText}`;
+    }
+
+    if (deliveryState.shippingError) {
+        return deliveryState.shippingError;
+    }
+
+    return 'Completá el CP para calcular el envío.';
+}
+
+function setDeliveryPanelOpen(isOpen) {
+    const shouldOpen = Boolean(isOpen);
+    deliveryPanelOpen = shouldOpen;
+
+    const refs = getDeliveryInputRefs();
+    if (refs.configPanel) {
+        refs.configPanel.hidden = !shouldOpen;
+    }
+
+    if (refs.configToggle) {
+        refs.configToggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        refs.configToggle.textContent = shouldOpen ? 'Ocultar' : 'Configurar';
+    }
+
+    const checkoutBox = document.getElementById('delivery-checkout-box');
+    if (checkoutBox) {
+        checkoutBox.classList.toggle('is-expanded', shouldOpen);
+    }
 }
 
 function getCheckoutValidation() {
@@ -622,6 +887,14 @@ function updateDeliveryUi() {
             : '';
     }
 
+    if (refs.compactSummary) {
+        refs.compactSummary.textContent = getDeliveryCompactSummary();
+        refs.compactSummary.classList.toggle(
+            'is-error',
+            Boolean(deliveryState.shippingError)
+        );
+    }
+
     if (refs.quoteMessage) {
         if (deliveryState.method === DELIVERY_METHOD_PICKUP) {
             refs.quoteMessage.textContent = 'Retiro por fábrica sin costo de envío.';
@@ -729,6 +1002,10 @@ async function requestShippingQuote(postalCode) {
 function bindDeliveryUiActions() {
     const refs = getDeliveryInputRefs();
 
+    refs.configToggle?.addEventListener('click', () => {
+        setDeliveryPanelOpen(!deliveryPanelOpen);
+    });
+
     refs.methodInputs.forEach(input => {
         input.addEventListener('change', () => {
             deliveryState.method = input.value;
@@ -786,42 +1063,56 @@ function ensureDeliveryCheckoutUi() {
     checkoutBox.className = 'delivery-checkout-box';
     checkoutBox.innerHTML = `
         <h4 class="delivery-checkout-title">Entrega</h4>
-        <div class="delivery-methods">
-            <label class="delivery-option">
-                <input type="radio" name="delivery-method" value="shipping" checked>
-                <span>Envío a domicilio</span>
-            </label>
-            <label class="delivery-option">
-                <input type="radio" name="delivery-method" value="pickup">
-                <span>Retiro por fábrica</span>
-            </label>
+        <div class="delivery-checkout-head">
+            <p id="delivery-compact-summary" class="delivery-compact-summary">Completá el CP para calcular el envío.</p>
+            <button
+                id="delivery-config-toggle"
+                class="delivery-config-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="delivery-config-panel"
+            >
+                Configurar
+            </button>
         </div>
-        <div id="delivery-shipping-controls" class="delivery-shipping-controls">
-            <label for="delivery-postal-code">Código Postal</label>
-            <input id="delivery-postal-code" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="Ej: 1746" maxlength="4">
-            <p id="delivery-quote-message" class="delivery-help-message">Ingresá tu código postal para calcular el envío.</p>
-        </div>
-        <p id="delivery-pickup-info" class="delivery-help-message" hidden></p>
-        <div id="delivery-installation-wrap" class="delivery-installation-wrap" hidden>
-            <label class="delivery-option">
-                <input id="delivery-installation" type="checkbox">
-                <span id="delivery-installation-label"></span>
-            </label>
-            <p id="delivery-installation-note" class="delivery-help-message"></p>
-        </div>
-        <p id="delivery-installation-unavailable" class="delivery-help-message is-error" hidden></p>
-        <div class="cart-breakdown" id="cart-breakdown">
-            <div class="cart-breakdown-row">
-                <span>Subtotal</span>
-                <span id="cartSubtotal">${formatArs(0)}</span>
+        <div id="delivery-config-panel" class="delivery-config-panel" hidden>
+            <div class="delivery-methods">
+                <label class="delivery-option">
+                    <input type="radio" name="delivery-method" value="shipping" checked>
+                    <span>Envío a domicilio</span>
+                </label>
+                <label class="delivery-option">
+                    <input type="radio" name="delivery-method" value="pickup">
+                    <span>Retiro por fábrica</span>
+                </label>
             </div>
-            <div class="cart-breakdown-row">
-                <span>Envío</span>
-                <span id="cartShippingValue">Ingresá CP</span>
+            <div id="delivery-shipping-controls" class="delivery-shipping-controls">
+                <label for="delivery-postal-code">Código Postal</label>
+                <input id="delivery-postal-code" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="Ej: 1746" maxlength="4">
+                <p id="delivery-quote-message" class="delivery-help-message">Ingresá tu código postal para calcular el envío.</p>
             </div>
-            <div class="cart-breakdown-row" id="cartInstallationRow" hidden>
-                <span>Instalación (base)</span>
-                <span id="cartInstallationValue">${formatArs(0)}</span>
+            <p id="delivery-pickup-info" class="delivery-help-message" hidden></p>
+            <div id="delivery-installation-wrap" class="delivery-installation-wrap" hidden>
+                <label class="delivery-option">
+                    <input id="delivery-installation" type="checkbox">
+                    <span id="delivery-installation-label"></span>
+                </label>
+                <p id="delivery-installation-note" class="delivery-help-message"></p>
+            </div>
+            <p id="delivery-installation-unavailable" class="delivery-help-message is-error" hidden></p>
+            <div class="cart-breakdown" id="cart-breakdown">
+                <div class="cart-breakdown-row">
+                    <span>Subtotal</span>
+                    <span id="cartSubtotal">${formatArs(0)}</span>
+                </div>
+                <div class="cart-breakdown-row">
+                    <span>Envío</span>
+                    <span id="cartShippingValue">Ingresá CP</span>
+                </div>
+                <div class="cart-breakdown-row" id="cartInstallationRow" hidden>
+                    <span>Instalación (base)</span>
+                    <span id="cartInstallationValue">${formatArs(0)}</span>
+                </div>
             </div>
         </div>
         <p id="delivery-checkout-message" class="delivery-help-message is-error"></p>
@@ -839,6 +1130,7 @@ function ensureDeliveryCheckoutUi() {
     }
 
     bindDeliveryUiActions();
+    setDeliveryPanelOpen(false);
     updateDeliveryUi();
 }
 
@@ -990,6 +1282,7 @@ function updateCart() {
 async function checkout(currentEvent = null) {
     const checkoutValidation = getCheckoutValidation();
     if (!checkoutValidation.ok) {
+        setDeliveryPanelOpen(true);
         alert(checkoutValidation.message || 'Revisá los datos de entrega antes de continuar.');
         return;
     }
@@ -1077,6 +1370,7 @@ async function checkout(currentEvent = null) {
 
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', () => {
+    initThemeToggle();
     syncUiOverlayState();
     renderProducts();
     bindCommonUiActions();
@@ -1086,49 +1380,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCart();
     loadDeliveryOptions();
     injectDeliveryPolicyPanel();
-    getCsrfToken().catch(() => {});
 
     // Contact Form Pre-fill Logic
-    if (window.location.pathname.includes('contacto.html')) {
+    const currentPath = String(window.location.pathname || '').toLowerCase();
+    if (currentPath.includes('contacto')) {
         const urlParams = new URLSearchParams(window.location.search);
         const product = String(urlParams.get('producto') || '').slice(0, 120);
-        const sent = urlParams.get('sent');
-        const csrfInput = document.getElementById('contact-csrf-token');
-        const contactForm = document.querySelector('form[action="/api/contact"]');
-
-        if (csrfInput) {
-            getCsrfToken()
-                .then(token => {
-                    csrfInput.value = token;
-                })
-                .catch(() => {
-                    csrfInput.value = '';
-                });
-        }
-
-        if (contactForm && csrfInput) {
-            contactForm.addEventListener('submit', async event => {
-                if (csrfInput.value) {
-                    return;
-                }
-
-                event.preventDefault();
-                try {
-                    csrfInput.value = await getCsrfToken(true);
-                    contactForm.submit();
-                } catch (error) {
-                    alert('No se pudo validar el formulario. Intentá nuevamente.');
-                }
-            });
-        }
-
-        const submitInfo = document.getElementById('contact-submit-info');
-        if (submitInfo && sent) {
-            submitInfo.textContent = sent === '1'
-                ? 'Mensaje enviado correctamente. Te responderemos a la brevedad.'
-                : 'No pudimos enviar tu mensaje. Intentá nuevamente.';
-            submitInfo.style.color = sent === '1' ? '#5ec27f' : '#ff8a8a';
-        }
+        initContactFormSubmission();
+        setContactSubmitInfo('Responderemos a la brevedad posible.');
 
         if (product) {
             const typeSelect = document.querySelector('select[name="type"]');

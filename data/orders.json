@@ -227,6 +227,342 @@
       },
       "customerData": null,
       "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771118581634-00B936",
+      "createdAt": "2026-02-15T01:23:02.472Z",
+      "updatedAt": "2026-02-15T01:23:02.472Z",
+      "preferenceId": "3202898734-daee4089-680f-4798-9e1b-e6868619bc9b",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 210000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 265000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771119065474-01CB2B",
+      "createdAt": "2026-02-15T01:31:06.268Z",
+      "updatedAt": "2026-02-15T01:31:06.269Z",
+      "preferenceId": "3202898734-4711cdd4-3f2c-4cd4-8603-a8173e43d8ac",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 150000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771119850164-7F896B",
+      "createdAt": "2026-02-15T01:44:10.978Z",
+      "updatedAt": "2026-02-15T01:44:10.978Z",
+      "preferenceId": "3202898734-8b1877fe-3d04-41b0-af26-d8005849f098",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 2,
+          "unit_price": 95000
+        },
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 375000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 430000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771126464087-AB7A11",
+      "createdAt": "2026-02-15T03:34:24.846Z",
+      "updatedAt": "2026-02-15T03:34:24.846Z",
+      "preferenceId": "3202898734-c16fae0b-19a0-4b67-b4e0-84d3aac9a999",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        },
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 305000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 360000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771126507847-7D035D",
+      "createdAt": "2026-02-15T03:35:08.538Z",
+      "updatedAt": "2026-02-15T03:35:08.538Z",
+      "preferenceId": "3202898734-5481dc01-5907-436b-9fd1-faa868bc5284",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 3,
+          "unit_price": 95000
+        },
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 470000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 525000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128040824-366F37",
+      "createdAt": "2026-02-15T04:00:41.605Z",
+      "updatedAt": "2026-02-15T04:00:41.605Z",
+      "preferenceId": "3202898734-b39b040c-2ceb-469a-bb70-d8be580205e1",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        },
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 2,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "1146",
+        "shippingLabel": "CABA",
+        "shippingCost": 28000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 400000,
+        "shipping": 28000,
+        "installation": 0,
+        "total": 428000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128132301-4299E8",
+      "createdAt": "2026-02-15T04:02:13.619Z",
+      "updatedAt": "2026-02-15T04:02:13.619Z",
+      "preferenceId": "3202898734-5fa3a59f-7e0f-4870-84aa-e65084a97ef9",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 3,
+          "unit_price": 95000
+        },
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "1146",
+        "shippingLabel": "CABA",
+        "shippingCost": 28000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 470000,
+        "shipping": 28000,
+        "installation": 0,
+        "total": 498000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128448138-0E1909",
+      "createdAt": "2026-02-15T04:07:28.950Z",
+      "updatedAt": "2026-02-15T04:07:28.950Z",
+      "preferenceId": "3202898734-0f863bd4-811c-4ab7-802c-68136d3bfffd",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 150000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128566999-D5EAA4",
+      "createdAt": "2026-02-15T04:09:27.755Z",
+      "updatedAt": "2026-02-15T04:09:27.755Z",
+      "preferenceId": "3202898734-dc9bf9da-9cda-4ee9-8c29-d2941da66620",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "pickup",
+        "postalCode": null,
+        "shippingLabel": "Retiro en fábrica",
+        "shippingCost": 0,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 0,
+        "installation": 0,
+        "total": 95000
+      },
+      "customerData": null,
+      "paymentMeta": null
     }
   ]
 }

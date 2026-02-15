@@ -59,7 +59,7 @@ const cspDirectives = {
     defaultSrc: ["'self'"],
     baseUri: ["'self'"],
     scriptSrcAttr: ["'none'"],
-    connectSrc: ["'self'", 'https://api.mercadopago.com'],
+    connectSrc: ["'self'", 'https://api.mercadopago.com', 'https://formspree.io'],
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"]
 };
