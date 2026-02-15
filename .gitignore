@@ -2,8 +2,11 @@
 node_modules/
 package-lock.json
 
-# Environment variables
+# Environment variables (strict)
 .env
+.env.*
+**/.env
+**/.env.*
 
 # Logs
 *.log
@@ -28,6 +31,7 @@ coverage/
 
 # Variables de entorno
 **/.env
+**/.env.*
 
 # Logs
 npm-debug.log*
