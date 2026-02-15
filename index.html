@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zarpado Mueble | Diseño y Fabricación a Medida</title>
+    <meta name="description"
+        content="Muebles a medida con diseño exclusivo en Argentina. Melamina 18mm, acabados premium. Cocinas, placards, escritorios y más. Envíos a todo el país.">
+    <meta name="keywords"
+        content="muebles a medida, muebles personalizados, melamina 18mm, muebles Argentina, cocinas a medida, placards, escritorios, diseño de muebles">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://zarpadomueble.com/">
+    <link rel="preload" as="image" href="assets/principal.webp" fetchpriority="high">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://zarpadomueble.com/">
+    <meta property="og:title" content="Zarpado Mueble | Diseño y Fabricación a Medida">
+    <meta property="og:description"
+        content="Muebles a medida con diseño exclusivo en Argentina. Melamina 18mm, acabados premium y envíos a todo el país.">
+    <meta property="og:image" content="https://zarpadomueble.com/assets/principal.webp">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://zarpadomueble.com/">
+    <meta property="twitter:title" content="Zarpado Mueble | Diseño y Fabricación a Medida">
+    <meta property="twitter:description"
+        content="Muebles a medida con diseño exclusivo en Argentina. Melamina 18mm, acabados premium y envíos a todo el país.">
+    <meta property="twitter:image" content="https://zarpadomueble.com/assets/principal.webp">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" integrity="sha384-YeHGNsTN6csmBKfRwy34ZB0JkOAlRZz1gIua09tnOL1QRUP8DrI27hZRZ2k9sMbF" crossorigin="anonymous">
+    
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="page-home">
+
+    <!-- Navigation -->
+    <header class="navbar">
+        <div class="container navbar-container">
+            <a href="index.html" class="logo">Z.</a>
+
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Inicio</a></li>
+                    <li><a href="nosotros.html" class="nav-link">Nosotros</a></li>
+                    <li><a href="servicios.html" class="nav-link">Servicios</a></li>
+                    <li><a href="catalogo.html" class="nav-link">Catálogo</a></li>
+                    <li><a href="contacto.html" class="btn-nav">Contacto</a></li>
+                </ul>
+            </nav>
+
+            <div class="nav-icons">
+                <div class="cart-icon js-toggle-cart">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count">0</span>
+                </div>
+                <div class="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>Tu Carrito</h3>
+            <button class="close-cart js-toggle-cart">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <!-- Items added via JS -->
+            <p style="text-align:center; color: #666; margin-top: 2rem;">El carrito está vacío.</p>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total-row">
+                <span>Total:</span>
+                <span id="cartTotal">$0</span>
+            </div>
+            <button class="btn btn-primary js-checkout" style="width: 100%;">Iniciar Compra</button>
+        </div>
+    </div>
+
+    <!-- Cart Notification -->
+    <div id="cart-notification" class="cart-notification">
+        <i class="fas fa-shopping-bag" style="color: var(--color-accent); font-size: 1.5rem;"></i>
+        <div>
+            <p>¡No olvides tus muebles!</p>
+            <p style="font-size: 0.8rem; color: #aaa;">Termina tu compra ahora.</p>
+        </div>
+        <button class="cart-notification-close js-close-notification">&times;</button>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-slider">
+            <div class="hero-slide active" style="background-image: url('assets/principal.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/11.jpg');"></div>
+            <div class="hero-slide" style="background-image: url('assets/12.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/13.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/14.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/15.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/16.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/17.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/18.webp');"></div>
+            <div class="hero-slide" style="background-image: url('assets/19.webp');"></div>
+        </div>
+        <div class="hero-content">
+            <h1 class="hero-title">Estética. Funcionalidad. Carácter.</h1>
+            <p class="hero-subtitle">Diseño y fabricación de muebles a medida con melamina de 18mm y acabados de primera
+                calidad.</p>
+            <div class="hero-btn-wrapper">
+                <a href="catalogo.html" class="btn btn-primary">Ver Catálogo</a>
+                <a href="nosotros.html" class="btn btn-outline" style="margin-left: 10px;">Conocenos</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="section">
+        <div class="container">
+            <div class="text-center reveal">
+                <span class="section-tag">Diferenciales</span>
+                <h2 class="section-title">Por qué elegirnos</h2>
+                <p class="section-desc">No fabricamos muebles en serie. Creamos piezas únicas pensadas para durar y
+                    transformar tus espacios.</p>
+            </div>
+
+            <div class="grid-3">
+                <div class="feature-card reveal-up js-feature-link" data-href="nosotros.html" style="cursor: pointer;">
+                    <i class="fas fa-drafting-compass feature-icon"></i>
+                    <h3 class="feature-title">Diseño Integral</h3>
+                    <p class="feature-text">Planificación detallada para terminaciones limpias.</p>
+                </div>
+                <div class="feature-card reveal-up js-feature-link" data-href="catalogo.html" style="cursor: pointer;">
+                    <i class="fas fa-couch feature-icon"></i>
+                    <h3 class="feature-title">Mobiliario</h3>
+                    <p class="feature-text">Living, Cocina, Oficina y Dormitorios.</p>
+                </div>
+                <div class="feature-card reveal-up js-feature-link" data-href="servicios.html" style="cursor: pointer;">
+                    <i class="fas fa-ruler-combined feature-icon"></i>
+                    <h3 class="feature-title">A Medida</h3>
+                    <p class="feature-text">Cada decisión de diseño responde a un uso real.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Catalog Preview -->
+    <section class="section" style="background-color: var(--color-bg-secondary);">
+        <div class="container">
+            <div class="text-center reveal">
+                <span class="section-tag">Colección</span>
+                <h2 class="section-title">Destacados</h2>
+            </div>
+
+            <div class="products-grid">
+                <!-- Product 1 -->
+                <div class="product-card reveal">
+                    <div class="product-image">
+                        <img src="assets/desk_gamer.png" alt="Escritorio Gamer" loading="lazy" decoding="async"
+                            width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Escritorio Gamer Pro</h4>
+                        <p class="product-specs">Melamina 18mm / Pasacables / Luces LED</p>
+                        <span class="product-price">$185.000</span>
+                        <button class="btn-add-cart js-static-add-to-cart" data-product-id="1" type="button">Agregar al Carrito</button>
+                    </div>
+                </div>
+
+                <!-- Product 2 -->
+                <div class="product-card reveal" style="transition-delay: 0.1s;">
+                    <div class="product-image">
+                        <img src="assets/tv_rack.png" alt="Rack TV Minimalista" loading="lazy" decoding="async"
+                            width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Rack TV Minimalista</h4>
+                        <p class="product-specs">Para TV hasta 65" / Cajones push-open</p>
+                        <span class="product-price">$210.000</span>
+                        <button class="btn-add-cart js-static-add-to-cart" data-product-id="2" type="button">Agregar al Carrito</button>
+                    </div>
+                </div>
+
+                <!-- Product 3 -->
+                <div class="product-card reveal" style="transition-delay: 0.2s;">
+                    <div class="product-image">
+                        <img src="assets/coffee_table.png" alt="Mesa Ratona Industrial" loading="lazy" decoding="async"
+                            width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Mesa Ratona Industrial</h4>
+                        <p class="product-specs">Hierro estructural / Tapa Paraíso</p>
+                        <span class="product-price">$95.000</span>
+                        <button class="btn-add-cart js-static-add-to-cart" data-product-id="3" type="button">Agregar al Carrito</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center" style="margin-top: 4rem;">
+                <a href="catalogo.html" class="btn btn-outline">Ver Todo el Catálogo</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">Zarpado Mueble.</a>
+                    <p style="color: var(--color-text-muted); margin-top: 10px; font-size: 0.9rem;">Diseño y calidad sin
+                        concesiones.</p>
+                </div>
+                <div class="footer-links" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <a href="index.html" class="nav-link" style="font-size: 0.9rem;">Inicio</a>
+                    <a href="nosotros.html" class="nav-link" style="font-size: 0.9rem;">Nosotros</a>
+                    <a href="servicios.html" class="nav-link" style="font-size: 0.9rem;">Servicios</a>
+                    <a href="catalogo.html" class="nav-link" style="font-size: 0.9rem;">Catálogo</a>
+                    <a href="contacto.html" class="nav-link"
+                        style="font-size: 0.9rem; font-weight: bold; color: var(--color-accent);">Contacto</a>
+                </div>
+                <div class="footer-socials">
+                    <a href="https://www.instagram.com/zarpadomuebleoficial/" target="_blank" rel="noopener noreferrer" class="social-icon"><i
+                            class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/profile.php?id=61583196106459" target="_blank" rel="noopener noreferrer"
+                        class="social-icon"><i class="fab fa-facebook"></i></a>
+                    <a href="mailto:contacto@zarpadomueble.com" class="social-icon"><i class="fas fa-envelope"></i></a>
+                </div>
+            </div>
+            <div class="text-center"
+                style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <a href="privacidad.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Política de
+                        Privacidad</a>
+                    <a href="reembolso.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Política de
+                        Reembolso</a>
+                    <a href="terminos.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Términos de
+                        Servicio</a>
+                </div>
+                <p style="font-size: 0.8rem; color: #444;">&copy; 2026 Zarpado Mueble. Todos los derechos reservados.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/schema-home.js" defer></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

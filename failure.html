@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago Rechazado | Zarpado Mueble</title>
+    <meta name="description" content="No pudimos confirmar el pago. Podes reintentar o comunicarte con nuestro equipo de soporte.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" integrity="sha384-7IOpP42IUwYAb/f8f26rg1Z0NNbncPQbygjIEz98bakYOcz9dz8ZmYX33NoCX2lW" crossorigin="anonymous">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <header class="navbar">
+        <div class="container navbar-container">
+            <a href="index.html" class="logo">Z.</a>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Inicio</a></li>
+                    <li><a href="nosotros.html" class="nav-link">Nosotros</a></li>
+                    <li><a href="servicios.html" class="nav-link">Servicios</a></li>
+                    <li><a href="catalogo.html" class="nav-link">Catálogo</a></li>
+                    <li><a href="contacto.html" class="btn-nav">Contacto</a></li>
+                </ul>
+            </nav>
+            <div class="nav-icons">
+                <div class="cart-icon js-toggle-cart">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count">0</span>
+                </div>
+                <div class="hamburger">
+                    <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>Tu Carrito</h3>
+            <button class="close-cart js-toggle-cart">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-footer">
+            <div class="cart-total-row"><span>Total:</span><span id="cartTotal">$0</span></div>
+            <button class="btn btn-primary js-checkout" style="width: 100%;">Iniciar Compra</button>
+        </div>
+    </div>
+
+    <!-- Failure Content -->
+    <section class="section" style="min-height: 70vh; display: flex; align-items: center;">
+        <div class="container">
+            <div style="max-width: 600px; margin: 0 auto; text-align: center; padding: 40px 20px;">
+                <div style="font-size: 5rem; color: #e74c3c; margin-bottom: 1rem;">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <h1 style="font-size: 2.5rem; margin-bottom: 1rem; color: #e74c3c;">Pago Rechazado</h1>
+                <p style="font-size: 1.1rem; color: var(--color-text-muted); margin-bottom: 2rem; line-height: 1.8;">
+                    El pago no pudo ser procesado. Esto puede deberse a varios motivos:
+                </p>
+                <ul style="text-align: left; max-width: 400px; margin: 0 auto 2rem; color: var(--color-text-muted);">
+                    <li style="margin-bottom: 8px;">• Fondos insuficientes</li>
+                    <li style="margin-bottom: 8px;">• Datos incorrectos de la tarjeta</li>
+                    <li style="margin-bottom: 8px;">• Tarjeta vencida o bloqueada</li>
+                    <li style="margin-bottom: 8px;">• Límite de compra excedido</li>
+                </ul>
+                <p style="font-size: 1rem; color: var(--color-text-muted); margin-bottom: 3rem;">
+                    Tus productos siguen en el carrito. Podés intentar nuevamente con otro medio de pago.
+                </p>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary js-toggle-cart">Intentar Nuevamente</button>
+                    <a href="contacto.html" class="btn btn-outline">Contactar Soporte</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">Z.</a>
+                    <p style="color: var(--color-text-muted); margin-top: 10px; font-size: 0.9rem;">Diseño y calidad sin
+                        concesiones.</p>
+                </div>
+                <div class="footer-socials">
+                    <a href="https://www.instagram.com/zarpadomuebleoficial/" target="_blank" rel="noopener noreferrer" class="social-icon"><i
+                            class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/profile.php?id=61583196106459" target="_blank" rel="noopener noreferrer"
+                        class="social-icon"><i class="fab fa-facebook"></i></a>
+                    <a href="mailto:contacto@zarpadomueble.com" class="social-icon"><i class="fas fa-envelope"></i></a>
+                </div>
+            </div>
+            <div class="text-center"
+                style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <p style="font-size: 0.8rem; color: #444;">&copy; 2026 Zarpado Mueble. Todos los derechos reservados.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

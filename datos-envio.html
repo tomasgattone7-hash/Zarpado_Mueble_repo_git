@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datos de Envío | Zarpado Mueble</title>
+    <meta name="description" content="Completá tus datos para coordinar la entrega, instalación o retiro de tu pedido.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" integrity="sha384-7IOpP42IUwYAb/f8f26rg1Z0NNbncPQbygjIEz98bakYOcz9dz8ZmYX33NoCX2lW" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="navbar">
+        <div class="container navbar-container">
+            <a href="index.html" class="logo">Z.</a>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Inicio</a></li>
+                    <li><a href="nosotros.html" class="nav-link">Nosotros</a></li>
+                    <li><a href="servicios.html" class="nav-link">Servicios</a></li>
+                    <li><a href="catalogo.html" class="nav-link">Catálogo</a></li>
+                    <li><a href="contacto.html" class="btn-nav">Contacto</a></li>
+                </ul>
+            </nav>
+            <div class="nav-icons">
+                <div class="hamburger">
+                    <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="section shipping-data-section">
+        <div class="container">
+            <div class="shipping-data-card reveal">
+                <span class="section-tag">Paso Final</span>
+                <h1 class="section-title" style="font-size: 2.2rem;">Datos para coordinar tu pedido</h1>
+                <p class="section-desc">Completá la información para coordinar entrega, instalación o retiro por fábrica.</p>
+
+                <div class="shipping-data-summary" id="order-summary">
+                    <p><strong>Pedido:</strong> <span id="order-id-text">-</span></p>
+                    <p><strong>Método de entrega:</strong> <span id="order-delivery-method">-</span></p>
+                    <p><strong>Total abonado:</strong> <span id="order-total-text">-</span></p>
+                </div>
+
+                <form id="delivery-data-form" novalidate>
+                    <input type="hidden" id="delivery-order-id" name="orderId" value="">
+                    <input type="hidden" id="delivery-payment-id" name="paymentId" value="">
+                    <input type="hidden" id="delivery-preference-id" name="preferenceId" value="">
+                    <input type="hidden" id="delivery-payment-status" name="paymentStatus" value="">
+
+                    <div class="shipping-data-grid">
+                        <div class="form-group">
+                            <label for="fullName">Nombre y apellido *</label>
+                            <input id="fullName" name="fullName" class="form-input" required autocomplete="name">
+                        </div>
+                        <div class="form-group">
+                            <label for="documentId">DNI / Documento *</label>
+                            <input id="documentId" name="documentId" class="form-input" required autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Teléfono *</label>
+                            <input id="phone" name="phone" class="form-input" required autocomplete="tel">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input id="email" name="email" class="form-input" type="email" required autocomplete="email">
+                        </div>
+                    </div>
+
+                    <div id="shipping-address-section">
+                        <h3 style="margin: 1.2rem 0 0.8rem; font-size: 1.1rem;">Dirección de envío</h3>
+                        <div class="shipping-data-grid">
+                            <div class="form-group">
+                                <label for="street">Calle *</label>
+                                <input id="street" name="street" class="form-input" autocomplete="address-line1">
+                            </div>
+                            <div class="form-group">
+                                <label for="streetNumber">Número *</label>
+                                <input id="streetNumber" name="streetNumber" class="form-input" autocomplete="off">
+                            </div>
+                            <div class="form-group">
+                                <label for="city">Ciudad / Localidad *</label>
+                                <input id="city" name="city" class="form-input" autocomplete="address-level2">
+                            </div>
+                            <div class="form-group">
+                                <label for="province">Provincia *</label>
+                                <input id="province" name="province" class="form-input" autocomplete="address-level1">
+                            </div>
+                            <div class="form-group">
+                                <label for="postalCode">Código Postal *</label>
+                                <input id="postalCode" name="postalCode" class="form-input" inputmode="numeric" autocomplete="postal-code" maxlength="4">
+                            </div>
+                            <div class="form-group">
+                                <label for="floorApartment">Piso / Dpto</label>
+                                <input id="floorApartment" name="floorApartment" class="form-input" autocomplete="address-line2">
+                            </div>
+                            <div class="form-group">
+                                <label for="neighborhood">Barrio</label>
+                                <input id="neighborhood" name="neighborhood" class="form-input">
+                            </div>
+                            <div class="form-group shipping-data-full">
+                                <label for="addressReference">Referencia del domicilio</label>
+                                <input id="addressReference" name="addressReference" class="form-input" placeholder="Portón negro, esquina, etc.">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin: 1.2rem 0 0.8rem; font-size: 1.1rem;">Coordinación</h3>
+                    <div class="shipping-data-grid">
+                        <div class="form-group">
+                            <label for="receiverType">¿Quién recibe?</label>
+                            <select id="receiverType" name="receiverType" class="form-input">
+                                <option value="">Seleccionar</option>
+                                <option value="yo">Yo</option>
+                                <option value="otra_persona">Otra persona</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="receiverName">Nombre de quien recibe</label>
+                            <input id="receiverName" name="receiverName" class="form-input">
+                        </div>
+                        <div class="form-group shipping-data-full">
+                            <label for="availableSchedule">Horario disponible para recibir</label>
+                            <input id="availableSchedule" name="availableSchedule" class="form-input" placeholder="Ej: lunes a viernes de 9 a 14">
+                        </div>
+                        <div class="form-group shipping-data-full">
+                            <label for="additionalNotes">Notas adicionales</label>
+                            <textarea id="additionalNotes" name="additionalNotes" class="form-textarea" rows="4"></textarea>
+                        </div>
+                    </div>
+
+                    <p class="shipping-data-note" id="delivery-mode-note"></p>
+                    <button class="btn btn-primary" id="delivery-submit-btn" type="submit">Guardar datos</button>
+                    <p id="delivery-form-feedback" class="shipping-data-feedback"></p>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">Z.</a>
+                    <p style="color: var(--color-text-muted); margin-top: 10px; font-size: 0.9rem;">Diseño y calidad sin concesiones.</p>
+                </div>
+                <div class="footer-socials">
+                    <a href="https://www.instagram.com/zarpadomuebleoficial/" target="_blank" rel="noopener noreferrer" class="social-icon"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/profile.php?id=61583196106459" target="_blank" rel="noopener noreferrer" class="social-icon"><i class="fab fa-facebook"></i></a>
+                    <a href="mailto:contacto@zarpadomueble.com" class="social-icon"><i class="fas fa-envelope"></i></a>
+                </div>
+            </div>
+            <div class="text-center" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <p style="font-size: 0.8rem; color: #444;">&copy; 2026 Zarpado Mueble. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="js/datos-envio.js" defer></script>
+</body>
+
+</html>

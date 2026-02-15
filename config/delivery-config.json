@@ -1,0 +1,92 @@
+{
+  "currency": "ARS",
+  "installationBaseCost": 200000,
+  "installationComplexNotice": "Instalaciones complejas se cotizan aparte.",
+  "unsupportedPostalCodeMessage": "No podemos calcular el envío automáticamente para tu CP. Contactanos para cotización.",
+  "factoryPickup": {
+    "address": "Salto 850, Francisco Álvarez, Moreno, Buenos Aires",
+    "note": "Retiro sin costo. El cliente debe venir con su flete propio. Se entrega el mueble en fábrica."
+  },
+  "shippingRules": [
+    {
+      "label": "CABA",
+      "ranges": [
+        { "from": "1000", "to": "1499" }
+      ],
+      "cost": 28000
+    },
+    {
+      "label": "AMBA y GBA",
+      "ranges": [
+        { "from": "1500", "to": "1899" }
+      ],
+      "cost": 35000
+    },
+    {
+      "label": "Buenos Aires interior",
+      "ranges": [
+        { "from": "1900", "to": "2999" }
+      ],
+      "cost": 55000
+    },
+    {
+      "label": "Centro y Litoral",
+      "ranges": [
+        { "from": "3000", "to": "3999" }
+      ],
+      "cost": 70000
+    },
+    {
+      "label": "NOA",
+      "ranges": [
+        { "from": "4000", "to": "4999" }
+      ],
+      "cost": 85000
+    },
+    {
+      "label": "Cuyo",
+      "ranges": [
+        { "from": "5000", "to": "5999" }
+      ],
+      "cost": 85000
+    },
+    {
+      "label": "Centro-Pampa",
+      "ranges": [
+        { "from": "6000", "to": "6999" }
+      ],
+      "cost": 70000
+    },
+    {
+      "label": "Patagonia norte",
+      "ranges": [
+        { "from": "7000", "to": "7999" }
+      ],
+      "cost": 95000
+    },
+    {
+      "label": "Patagonia sur",
+      "ranges": [
+        { "from": "8000", "to": "8999" }
+      ],
+      "cost": 115000
+    },
+    {
+      "label": "Extremo sur",
+      "ranges": [
+        { "from": "9000", "to": "9999" }
+      ],
+      "cost": 130000
+    }
+  ],
+  "installationZones": {
+    "label": "Buenos Aires (zonas seleccionadas)",
+    "enabledPostalCodes": ["1746", "1744", "1742"],
+    "enabledRanges": [
+      { "from": "1702", "to": "1708" },
+      { "from": "1712", "to": "1714" },
+      { "from": "1722", "to": "1738" },
+      { "from": "1740", "to": "1749" }
+    ]
+  }
+}

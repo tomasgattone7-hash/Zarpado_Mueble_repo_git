@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Términos de Servicio | Zarpado Mueble</title>
+    <meta name="description"
+        content="Términos y condiciones de servicio de Zarpado Mueble. Lee nuestras políticas y acuerdos.">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" integrity="sha384-7IOpP42IUwYAb/f8f26rg1Z0NNbncPQbygjIEz98bakYOcz9dz8ZmYX33NoCX2lW" crossorigin="anonymous">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <header class="navbar">
+        <div class="container navbar-container">
+            <a href="index.html" class="logo">Z.</a>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Inicio</a></li>
+                    <li><a href="nosotros.html" class="nav-link">Nosotros</a></li>
+                    <li><a href="servicios.html" class="nav-link">Servicios</a></li>
+                    <li><a href="catalogo.html" class="nav-link">Catálogo</a></li>
+                    <li><a href="contacto.html" class="btn-nav">Contacto</a></li>
+                </ul>
+            </nav>
+            <div class="nav-icons">
+                <div class="cart-icon js-toggle-cart">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count">0</span>
+                </div>
+                <div class="hamburger">
+                    <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>Tu Carrito</h3>
+            <button class="close-cart js-toggle-cart">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-footer">
+            <div class="cart-total-row"><span>Total:</span><span id="cartTotal">$0</span></div>
+            <button class="btn btn-primary js-checkout" style="width: 100%;">Iniciar Compra</button>
+        </div>
+    </div>
+
+    <!-- Page Header -->
+    <section class="hero" style="height: 50vh; min-height: 350px;">
+        <div class="hero-slider">
+            <div class="hero-slide active" style="background-image: url('assets/principal.webp');"></div>
+        </div>
+        <div class="hero-content">
+            <span class="section-tag"
+                style="color: var(--color-accent); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">Legal</span>
+            <h1 class="hero-title" style="font-size: 3rem;">Términos de Servicio</h1>
+        </div>
+    </section>
+
+    <!-- Content -->
+    <section class="section" style="padding-top: 0;">
+        <div class="container">
+            <div class="contact-form reveal" style="max-width: 900px; margin: 0 auto;">
+
+                <p style="color: var(--color-text-muted); margin-bottom: 2rem;">
+                    <strong>Última actualización:</strong> Febrero 2026
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">1. Aceptación de los
+                    Términos</h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Al acceder y utilizar los servicios de <strong>Zarpado Mueble</strong>, usted acepta estar sujeto a
+                    estos términos de servicio. Si no está de acuerdo con alguna parte de estos términos, no debe
+                    utilizar nuestros servicios.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">2. Descripción del
+                    Servicio</h2>
+                <p style="margin-bottom: 1rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Zarpado Mueble ofrece servicios de diseño, fabricación y venta de muebles a medida, incluyendo:
+                </p>
+                <ul style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">• Diseño personalizado de mobiliario</li>
+                    <li style="margin-bottom: 8px;">• Fabricación con melamina de 18mm de alta calidad</li>
+                    <li style="margin-bottom: 8px;">• Instalación y montaje (según disponibilidad)</li>
+                    <li style="margin-bottom: 8px;">• Asesoramiento técnico especializado</li>
+                </ul>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">3. Proceso de Pedido
+                </h2>
+                <p style="margin-bottom: 1rem; color: var(--color-text-muted); line-height: 1.8;">
+                    El proceso de pedido incluye las siguientes etapas:
+                </p>
+                <ul style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">• <strong>Consulta inicial:</strong> Solicitud de presupuesto con
+                        especificaciones</li>
+                    <li style="margin-bottom: 8px;">• <strong>Diseño:</strong> Elaboración de planos y renders según
+                        requerimientos</li>
+                    <li style="margin-bottom: 8px;">• <strong>Confirmación:</strong> Aprobación del diseño y presupuesto
+                        por el cliente</li>
+                    <li style="margin-bottom: 8px;">• <strong>Seña:</strong> Pago del 50% para iniciar producción</li>
+                    <li style="margin-bottom: 8px;">• <strong>Fabricación:</strong> Proceso de corte y ensamblado (10-20
+                        días hábiles)</li>
+                    <li style="margin-bottom: 8px;">• <strong>Entrega:</strong> Coordinación de envío o retiro</li>
+                    <li style="margin-bottom: 8px;">• <strong>Pago final:</strong> Abono del 50% restante previo a la
+                        entrega</li>
+                </ul>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">4. Precios y Pagos
+                </h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Los precios publicados en nuestro catálogo son orientativos. Los precios finales se confirman en el
+                    presupuesto según las especificaciones exactas del proyecto. Aceptamos pagos mediante transferencia
+                    bancaria, Mercado Pago y efectivo. Se requiere una seña del 50% para iniciar la producción.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">5. Plazos de Entrega
+                </h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Los plazos de fabricación son estimativos y oscilan entre 10 y 20 días hábiles desde la confirmación
+                    del pedido y recepción de la seña. Estos plazos pueden extenderse en casos de alta demanda,
+                    problemas con proveedores o modificaciones solicitadas por el cliente.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">6. Modificaciones y
+                    Cambios</h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Las modificaciones al diseño pueden solicitarse hasta 48 horas antes del inicio de la fabricación.
+                    Una vez iniciada la producción, no se aceptan cambios en medidas, colores o especificaciones. Los
+                    cambios solicitados antes de la producción pueden generar costos adicionales.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">7. Responsabilidad del
+                    Cliente</h2>
+                <p style="margin-bottom: 1rem; color: var(--color-text-muted); line-height: 1.8;">
+                    El cliente es responsable de:
+                </p>
+                <ul style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">• Proporcionar medidas exactas del espacio</li>
+                    <li style="margin-bottom: 8px;">• Verificar que las características del lugar sean aptas para la
+                        instalación</li>
+                    <li style="margin-bottom: 8px;">• Revisar detalladamente el diseño antes de aprobarlo</li>
+                    <li style="margin-bottom: 8px;">• Estar presente en la entrega e instalación</li>
+                    <li style="margin-bottom: 8px;">• Notificar cualquier inconformidad dentro de las 72 horas
+                        posteriores a la entrega</li>
+                </ul>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">8. Limitación de
+                    Responsabilidad</h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Zarpado Mueble no se hace responsable por daños indirectos, incidentales o consecuentes derivados
+                    del uso de nuestros productos. Nuestra responsabilidad máxima se limita al valor del mueble
+                    adquirido.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">9. Propiedad
+                    Intelectual</h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Todos los diseños, renders y documentación técnica elaborada por Zarpado Mueble son de nuestra
+                    propiedad intelectual. El cliente recibe una licencia de uso para el mueble específico encargado,
+                    pero no puede reproducir los diseños comercialmente.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">10. Jurisdicción</h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Estos términos se rigen por las leyes de la República Argentina. Cualquier disputa será resuelta en
+                    los tribunales competentes de la Ciudad Autónoma de Buenos Aires.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">11. Modificaciones a
+                    los Términos</h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Nos reservamos el derecho de modificar estos términos en cualquier momento. Las modificaciones
+                    entrarán en vigor inmediatamente después de su publicación en nuestro sitio web.
+                </p>
+
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--color-accent);">12. Contacto</h2>
+                <p style="margin-bottom: 2rem; color: var(--color-text-muted); line-height: 1.8;">
+                    Para consultas sobre estos términos de servicio:
+                </p>
+                <p style="margin-bottom: 1rem; color: var(--color-text-muted);">
+                    <strong>Email:</strong> contacto@zarpadomueble.com<br>
+                    <strong>WhatsApp:</strong> +54 9 11 2747-4780
+                </p>
+
+                <div style="margin-top: 3rem; text-align: center;">
+                    <a href="index.html" class="btn btn-outline">Volver al Inicio</a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">Z.</a>
+                    <p style="color: var(--color-text-muted); margin-top: 10px; font-size: 0.9rem;">Diseño y calidad sin
+                        concesiones.</p>
+                </div>
+                <div class="footer-links" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <a href="index.html" class="nav-link" style="font-size: 0.9rem;">Inicio</a>
+                    <a href="nosotros.html" class="nav-link" style="font-size: 0.9rem;">Nosotros</a>
+                    <a href="servicios.html" class="nav-link" style="font-size: 0.9rem;">Servicios</a>
+                    <a href="catalogo.html" class="nav-link" style="font-size: 0.9rem;">Catálogo</a>
+                    <a href="contacto.html" class="nav-link"
+                        style="font-size: 0.9rem; font-weight: bold; color: var(--color-accent);">Contacto</a>
+                </div>
+                <div class="footer-socials">
+                    <a href="https://www.instagram.com/zarpadomuebleoficial/" target="_blank" rel="noopener noreferrer" class="social-icon"><i
+                            class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/profile.php?id=61583196106459" target="_blank" rel="noopener noreferrer"
+                        class="social-icon"><i class="fab fa-facebook"></i></a>
+                    <a href="mailto:contacto@zarpadomueble.com" class="social-icon"><i class="fas fa-envelope"></i></a>
+                </div>
+            </div>
+            <div class="text-center"
+                style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <a href="privacidad.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Política de
+                        Privacidad</a>
+                    <a href="reembolso.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Política de
+                        Reembolso</a>
+                    <a href="terminos.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Términos de
+                        Servicio</a>
+                </div>
+                <p style="font-size: 0.8rem; color: #444;">&copy; 2026 Zarpado Mueble. Todos los derechos reservados.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contacto | Zarpado Mueble - Solicitá tu Presupuesto</title>
+    <meta name="description"
+        content="Contacta con Zarpado Mueble para solicitar presupuestos sin compromiso. WhatsApp, email o formulario de contacto. Cuéntanos tu proyecto.">
+    <link rel="canonical" href="https://zarpadomueble.com/contacto.html">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" integrity="sha384-7IOpP42IUwYAb/f8f26rg1Z0NNbncPQbygjIEz98bakYOcz9dz8ZmYX33NoCX2lW" crossorigin="anonymous">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <header class="navbar">
+        <div class="container navbar-container">
+            <a href="index.html" class="logo">Z.</a>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Inicio</a></li>
+                    <li><a href="nosotros.html" class="nav-link">Nosotros</a></li>
+                    <li><a href="servicios.html" class="nav-link">Servicios</a></li>
+                    <li><a href="catalogo.html" class="nav-link">Catálogo</a></li>
+                    <li><a href="contacto.html" class="btn-nav active">Contacto</a></li>
+                </ul>
+            </nav>
+            <div class="nav-icons">
+                <div class="cart-icon js-toggle-cart">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count">0</span>
+                </div>
+                <div class="hamburger">
+                    <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>Tu Carrito</h3>
+            <button class="close-cart js-toggle-cart">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-footer">
+            <div class="cart-total-row"><span>Total:</span><span id="cartTotal">$0</span></div>
+            <button class="btn btn-primary js-checkout" style="width: 100%;">Iniciar Compra</button>
+        </div>
+    </div>
+
+    <!-- Cart Notification -->
+    <div id="cart-notification" class="cart-notification">
+        <i class="fas fa-shopping-bag" style="color: var(--color-accent); font-size: 1.5rem;"></i>
+        <div>
+            <p>¡No olvides tus muebles!</p>
+            <p style="font-size: 0.8rem; color: #aaa;">Termina tu compra ahora.</p>
+        </div>
+        <button class="cart-notification-close js-close-notification">&times;</button>
+    </div>
+
+    <!-- Page Header -->
+    <section class="hero" style="height: 60vh; min-height: 400px;">
+        <div class="hero-slider">
+            <div class="hero-slide active" style="background-image: url('assets/18.webp');"></div>
+        </div>
+        <div class="hero-content">
+            <span class="section-tag"
+                style="color: var(--color-accent); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">Hablemos</span>
+            <h1 class="hero-title" style="font-size: 3.5rem;">Contacto & Presupuestos</h1>
+            <p class="section-desc" style="color: #EEE; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Cuéntanos tu idea.
+                Nosotros la materializamos.</p>
+        </div>
+    </section>
+
+    <!-- Contact Form -->
+    <section class="section" style="padding-top: 0;">
+        <div class="container">
+            <!-- Social Media Box -->
+            <div class="reveal" style="max-width: 900px; margin: 0 auto 4rem;">
+                <h3 class="text-center" style="margin-bottom: 2rem; font-size: 1.8rem;">Conectate con Nosotros</h3>
+                <div class="social-grid">
+
+                    <a href="https://wa.me/5491127474780" target="_blank" rel="noopener noreferrer" class="social-card whatsapp">
+                        <i class="fab fa-whatsapp"></i>
+                        <h4>WhatsApp</h4>
+                        <p>Respuesta inmediata</p>
+                    </a>
+
+                    <a href="https://www.instagram.com/zarpadomuebleoficial/" target="_blank" rel="noopener noreferrer"
+                        class="social-card instagram">
+                        <i class="fab fa-instagram"></i>
+                        <h4>Instagram</h4>
+                        <p>Seguinos</p>
+                    </a>
+
+                    <a href="https://www.facebook.com/profile.php?id=61583196106459" target="_blank" rel="noopener noreferrer"
+                        class="social-card facebook">
+                        <i class="fab fa-facebook-f"></i>
+                        <h4>Facebook</h4>
+                        <p>Nuestra comunidad</p>
+                    </a>
+
+                </div>
+            </div>
+
+            <div class="contact-form reveal" style="transition-delay: 0.2s;">
+                <form action="/api/contact" method="POST">
+                    <input id="contact-csrf-token" type="hidden" name="csrf_token" value="">
+
+                    <div class="form-group">
+                        <label for="contact-name"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Nombre
+                            Completo</label>
+                        <input id="contact-name" type="text" name="name" class="form-input" required
+                            placeholder="Ej: Juan Pérez" autocomplete="name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-email"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Correo
+                            Electrónico</label>
+                        <input id="contact-email" type="email" name="email" class="form-input" required
+                            placeholder="Ej: juan@email.com" autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-phone"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Teléfono</label>
+                        <input id="contact-phone" type="tel" name="phone" class="form-input"
+                            placeholder="Ej: 11 1234 5678" autocomplete="tel">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-type"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Tipo
+                            de Mueble</label>
+                        <select id="contact-type" name="type" class="form-input"
+                            style="appearance: none; -webkit-appearance: none;">
+                            <option value="" disabled selected>Selecciona una opción</option>
+                            <option value="Escritorio">Escritorio / Oficina</option>
+                            <option value="Rack TV">Rack TV / Vajillero</option>
+                            <option value="Cocina">Cocina</option>
+                            <option value="Placard">Placard / Vestidor</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-message"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Mensaje
+                            / Medidas aproximadas</label>
+                        <textarea id="contact-message" name="message" class="form-textarea" rows="5" required
+                            placeholder="Cuéntanos más detalles sobre lo que buscas..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Solicitar Presupuesto</button>
+                    <p id="contact-submit-info" style="font-size: 0.8rem; color: #555; text-align: center; margin-top: 15px;">Responderemos a la
+                        brevedad posible.</p>
+
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">Z.</a>
+                    <p style="color: var(--color-text-muted); margin-top: 10px; font-size: 0.9rem;">Diseño y calidad sin
+                        concesiones.</p>
+                </div>
+                <div class="footer-links" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <a href="index.html" class="nav-link" style="font-size: 0.9rem;">Inicio</a>
+                    <a href="nosotros.html" class="nav-link" style="font-size: 0.9rem;">Nosotros</a>
+                    <a href="servicios.html" class="nav-link" style="font-size: 0.9rem;">Servicios</a>
+                    <a href="catalogo.html" class="nav-link" style="font-size: 0.9rem;">Catálogo</a>
+                    <a href="contacto.html" class="nav-link"
+                        style="font-size: 0.9rem; font-weight: bold; color: var(--color-accent);">Contacto</a>
+                </div>
+                <div class="footer-socials">
+                    <a href="https://www.instagram.com/zarpadomuebleoficial/" target="_blank" rel="noopener noreferrer" class="social-icon"><i
+                            class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/profile.php?id=61583196106459" target="_blank" rel="noopener noreferrer"
+                        class="social-icon"><i class="fab fa-facebook"></i></a>
+                    <a href="mailto:contacto@zarpadomueble.com" class="social-icon"><i class="fas fa-envelope"></i></a>
+                </div>
+            </div>
+            <div class="text-center"
+                style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <a href="privacidad.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Política de
+                        Privacidad</a>
+                    <a href="reembolso.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Política de
+                        Reembolso</a>
+                    <a href="terminos.html" class="nav-link" style="font-size: 0.8rem; color: #666;">Términos de
+                        Servicio</a>
+                </div>
+                <p style="font-size: 0.8rem; color: #444;">&copy; 2026 Zarpado Mueble. Todos los derechos reservados.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+.nyc_output/
+
+# Dependencias
+**/node_module
+
+# Variables de entorno
+**/.env
+
+# Logs
+npm-debug.log*
+
+# Build
+dist/
+build/
+
+# Sistema
+.DS_Store

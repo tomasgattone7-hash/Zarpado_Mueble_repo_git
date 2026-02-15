@@ -1,0 +1,16 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#fdfbf7"/>
+  
+  <!-- Closet Frame -->
+  <rect x="200" y="50" width="400" height="500" fill="#ffffff" stroke="#d0d0d0" stroke-width="4"/>
+  
+  <!-- Left Door (Wood Texture Color) -->
+  <rect x="210" y="60" width="185" height="480" fill="#e3cdb0" stroke="#cbb290"/>
+  <rect x="370" y="280" width="4" height="40" fill="#8d775f"/> <!-- Handle -->
+  
+  <!-- Right Door (White) -->
+  <rect x="405" y="60" width="185" height="480" fill="#f9f9f9" stroke="#ddd"/>
+  <rect x="425" y="280" width="4" height="40" fill="#ccc"/> <!-- Handle -->
+  
+  <text x="400" y="580" font-family="Arial" font-size="24" text-anchor="middle" fill="#888">Placard Vestidor</text>
+</svg>

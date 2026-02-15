@@ -1,0 +1,162 @@
+{
+  "12.png": {
+    "width": 2816,
+    "height": 1536,
+    "original_bytes": 6957592,
+    "optimized_webp": "12.webp",
+    "optimized_bytes": 84844,
+    "saved_percent": 98.8
+  },
+  "13.png": {
+    "width": 2752,
+    "height": 1536,
+    "original_bytes": 7830807,
+    "optimized_webp": "13.webp",
+    "optimized_bytes": 146078,
+    "saved_percent": 98.1
+  },
+  "14.png": {
+    "width": 2752,
+    "height": 1536,
+    "original_bytes": 8117234,
+    "optimized_webp": "14.webp",
+    "optimized_bytes": 157992,
+    "saved_percent": 98.1
+  },
+  "15.png": {
+    "width": 2816,
+    "height": 1536,
+    "original_bytes": 7310595,
+    "optimized_webp": "15.webp",
+    "optimized_bytes": 101140,
+    "saved_percent": 98.6
+  },
+  "16.png": {
+    "width": 3168,
+    "height": 1344,
+    "original_bytes": 7748549,
+    "optimized_webp": "16.webp",
+    "optimized_bytes": 123722,
+    "saved_percent": 98.4
+  },
+  "17.png": {
+    "width": 2816,
+    "height": 1536,
+    "original_bytes": 7879238,
+    "optimized_webp": "17.webp",
+    "optimized_bytes": 171412,
+    "saved_percent": 97.8
+  },
+  "18.png": {
+    "width": 2816,
+    "height": 1536,
+    "original_bytes": 8204992,
+    "optimized_webp": "18.webp",
+    "optimized_bytes": 239022,
+    "saved_percent": 97.1
+  },
+  "19.png": {
+    "width": 2816,
+    "height": 1536,
+    "original_bytes": 7674811,
+    "optimized_webp": "19.webp",
+    "optimized_bytes": 167472,
+    "saved_percent": 97.8
+  },
+  "cabinet.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 585822,
+    "optimized_webp": "cabinet.webp",
+    "optimized_bytes": 32026,
+    "saved_percent": 94.5
+  },
+  "chair.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 645838,
+    "optimized_webp": "chair.webp",
+    "optimized_bytes": 33680,
+    "saved_percent": 94.8
+  },
+  "closet.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 585822,
+    "optimized_webp": "closet.webp",
+    "optimized_bytes": 32026,
+    "saved_percent": 94.5
+  },
+  "craft_detail.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 799287,
+    "optimized_webp": "craft_detail.webp",
+    "optimized_bytes": 82974,
+    "saved_percent": 89.6
+  },
+  "desk_office.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 604850,
+    "optimized_webp": "desk_office.webp",
+    "optimized_bytes": 40886,
+    "saved_percent": 93.2
+  },
+  "hero_bg.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 705508,
+    "optimized_webp": "hero_bg.webp",
+    "optimized_bytes": 70846,
+    "saved_percent": 90
+  },
+  "kitchen.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 799287,
+    "optimized_webp": "kitchen.webp",
+    "optimized_bytes": 82974,
+    "saved_percent": 89.6
+  },
+  "melamine_desk.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 604850,
+    "optimized_webp": "melamine_desk.webp",
+    "optimized_bytes": 40886,
+    "saved_percent": 93.2
+  },
+  "nosotros.png": {
+    "width": 5632,
+    "height": 3072,
+    "original_bytes": 29715265,
+    "optimized_webp": "nosotros.webp",
+    "optimized_bytes": 832994,
+    "saved_percent": 97.2
+  },
+  "principal.png": {
+    "width": 2752,
+    "height": 1536,
+    "original_bytes": 7474989,
+    "optimized_webp": "principal.webp",
+    "optimized_bytes": 120460,
+    "saved_percent": 98.4
+  },
+  "table.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 510940,
+    "optimized_webp": "table.webp",
+    "optimized_bytes": 24746,
+    "saved_percent": 95.2
+  },
+  "tv_unit.png": {
+    "width": 1024,
+    "height": 1024,
+    "original_bytes": 510940,
+    "optimized_webp": "tv_unit.webp",
+    "optimized_bytes": 24746,
+    "saved_percent": 95.2
+  }
+}
