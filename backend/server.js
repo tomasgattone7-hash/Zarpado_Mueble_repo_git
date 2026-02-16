@@ -24,7 +24,7 @@ const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5
 const FRM_CONTACT_ID = String(process.env.FRM_CONTACT_ID || process.env.FORMSPREE_CONTACT_ID || '').trim();
 const FRM_MEDIDA_ID = String(process.env.FRM_MEDIDA_ID || process.env.FORMSPREE_ENVIO_ID || '').trim();
 const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
-const RECAPTCHA_V2_SITE_KEY = '6LdjBW4sAAAAAPaYMKU5daLqShZB3Vf4SUJDsq4Y';
+const RECAPTCHA_V2_SITE_KEY = '6LdtDG4sAAAAAMAXYM3oDCZhrM7qP7hsA85KABMM';
 const RECAPTCHA_SECRET = String(process.env.RECAPTCHA_SECRET || '').trim();
 const RECAPTCHA_SITE_KEY = String(process.env.RECAPTCHA_SITE_KEY || RECAPTCHA_V2_SITE_KEY).trim();
 const RECAPTCHA_VERSION = String(process.env.RECAPTCHA_VERSION || 'v2').trim().toLowerCase() === 'v3'

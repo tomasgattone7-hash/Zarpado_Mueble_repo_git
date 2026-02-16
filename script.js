@@ -51,7 +51,7 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
-const RECAPTCHA_V2_SITE_KEY = '6LdjBW4sAAAAAPaYMKU5daLqShZB3Vf4SUJDsq4Y';
+const RECAPTCHA_V2_SITE_KEY = '6LdtDG4sAAAAAMAXYM3oDCZhrM7qP7hsA85KABMM';
 const RECAPTCHA_V2_SCRIPT_URL = 'https://www.google.com/recaptcha/api.js?render=explicit';
 let recaptchaScriptLoadPromise = null;
 const recaptchaWidgetIds = {};
