@@ -509,6 +509,12 @@ img {
     background-image: linear-gradient(var(--color-overlay), var(--color-overlay)), url('assets/principal.webp');
 }
 
+@media (max-width: 900px) and (orientation: portrait) {
+    .page-home .hero {
+        background-image: linear-gradient(var(--color-overlay), var(--color-overlay)), url('assets/webphone01.png');
+    }
+}
+
 .hero-slider {
     position: absolute;
     top: 0;

@@ -440,6 +440,19 @@ const INITIAL_PRODUCTS_VISIBLE = 12;
 let visibleProductsCount = INITIAL_PRODUCTS_VISIBLE;
 let activeCatalogFilter = 'all';
 const PRODUCT_IMAGE_SIZES = '(max-width: 768px) 92vw, (max-width: 1200px) 45vw, 280px';
+const PRODUCT_RESPONSIVE_VARIANTS = {
+    cabinet: [360, 640, 960],
+    chair: [360, 640, 960],
+    coffee_table: [360, 640],
+    desk_gamer: [360, 640],
+    library: [360, 640],
+    melamine_desk: [360, 640, 960],
+    office_desk: [360, 640],
+    sideboard: [360, 640],
+    table: [360, 640, 960],
+    tv_rack: [360, 640],
+    tv_unit: [360, 640, 960]
+};
 
 const SHOP_PAGE_KEYS = new Set(['tienda', 'catalogo']);
 
@@ -581,13 +594,25 @@ function getOptimizedImageBase(imagePath) {
 function buildResponsiveProductPicture(product) {
     const fallbackImage = String(product.image || '').trim();
     const optimizedBase = getOptimizedImageBase(fallbackImage);
+    const imageName = String(fallbackImage || '')
+        .split('/')
+        .pop()
+        .replace(/\.[a-z0-9]+$/i, '');
+    const availableVariants = PRODUCT_RESPONSIVE_VARIANTS[imageName];
     if (!fallbackImage || !optimizedBase) {
         return `<img src="${fallbackImage}" alt="${product.name}" loading="lazy" decoding="async" width="1024" height="1024">`;
     }
+    if (!Array.isArray(availableVariants) || availableVariants.length === 0) {
+        return `<img src="${fallbackImage}" alt="${product.name}" loading="lazy" decoding="async" width="1024" height="1024">`;
+    }
 
-    const avifSet = `${optimizedBase}-360.avif 360w, ${optimizedBase}-640.avif 640w, ${optimizedBase}-960.avif 960w`;
-    const webpSet = `${optimizedBase}-360.webp 360w, ${optimizedBase}-640.webp 640w, ${optimizedBase}-960.webp 960w`;
-    const fallbackOptimized = `${optimizedBase}-640.webp`;
+    const avifSet = availableVariants
+        .map(size => `${optimizedBase}-${size}.avif ${size}w`)
+        .join(', ');
+    const webpSet = availableVariants
+        .map(size => `${optimizedBase}-${size}.webp ${size}w`)
+        .join(', ');
+    const fallbackOptimized = `${optimizedBase}-${availableVariants[availableVariants.length - 1]}.webp`;
 
     return `
         <picture>
@@ -2198,7 +2223,6 @@ function initHeroSlideshow() {
     const allSlides = Array.from(document.querySelectorAll('.hero-slide'));
     if (allSlides.length === 0) return;
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const orientationQuery = window.matchMedia('(orientation: portrait)');
     const slideInterval = 3000;
     let activeSlides = [];
@@ -2249,7 +2273,7 @@ function initHeroSlideshow() {
 
     const startRotation = () => {
         clearRotation();
-        if (activeSlides.length < 2 || prefersReducedMotion.matches) {
+        if (activeSlides.length < 2) {
             return;
         }
 
@@ -2299,11 +2323,6 @@ function initHeroSlideshow() {
         orientationQuery.addListener(refreshSlides);
     }
 
-    if (prefersReducedMotion.addEventListener) {
-        prefersReducedMotion.addEventListener('change', startRotation);
-    } else if (prefersReducedMotion.addListener) {
-        prefersReducedMotion.addListener(startRotation);
-    }
 }
 
 function closeNotification() {
