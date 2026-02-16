@@ -24,19 +24,6 @@ const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5
 const FRM_CONTACT_ID = String(process.env.FRM_CONTACT_ID || process.env.FORMSPREE_CONTACT_ID || '').trim();
 const FRM_MEDIDA_ID = String(process.env.FRM_MEDIDA_ID || process.env.FORMSPREE_ENVIO_ID || '').trim();
 const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
-const RECAPTCHA_V2_SITE_KEY = '6LdjBW4sAAAAAPaYMKU5daLqShZB3Vf4SUJDsq4Y';
-const RECAPTCHA_SECRET = String(process.env.RECAPTCHA_SECRET || '').trim();
-const RECAPTCHA_SITE_KEY = String(process.env.RECAPTCHA_SITE_KEY || RECAPTCHA_V2_SITE_KEY).trim();
-const RECAPTCHA_VERSION = String(process.env.RECAPTCHA_VERSION || 'v2').trim().toLowerCase() === 'v3'
-    ? 'v3'
-    : 'v2';
-const RECAPTCHA_MIN_SCORE = Number.parseFloat(process.env.RECAPTCHA_MIN_SCORE || '0.5') || 0.5;
-const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
-const RECAPTCHA_VERIFY_TIMEOUT_MS = Number.parseInt(process.env.RECAPTCHA_VERIFY_TIMEOUT_MS, 10) || 8000;
-const RECAPTCHA_ACTIONS = Object.freeze({
-    CONTACTO: 'contacto_submit',
-    MEDIDA: 'medida_submit'
-});
 const QUOTE_MAX_FILES = Number.parseInt(process.env.QUOTE_MAX_FILES, 10) || 6;
 const QUOTE_FILE_MAX_MB = Number.parseInt(process.env.QUOTE_FILE_MAX_MB, 10) || 5;
 const QUOTE_FILE_SIZE_BYTES = QUOTE_FILE_MAX_MB * 1024 * 1024;
@@ -190,223 +177,6 @@ function buildFormRequestMetadata(request) {
     };
 }
 
-function logRecaptchaFailure({
-    requestId,
-    code,
-    googleStatus = null,
-    message = '',
-    providerCodes = []
-}) {
-    const normalizedRequestId = normalizeText(requestId || 'n/a', 120);
-    const normalizedCode = normalizeText(code || 'recaptcha_failed', 80);
-    const normalizedStatus = Number.isInteger(Number(googleStatus))
-        ? Number(googleStatus)
-        : 'n/a';
-    const normalizedMessage = normalizeText(message, 300);
-    const normalizedProviderCodes = Array.isArray(providerCodes)
-        ? providerCodes.map(item => normalizeText(item, 80)).filter(Boolean)
-        : [];
-    const providerDetails = normalizedProviderCodes.length > 0
-        ? ` providerCodes=${normalizedProviderCodes.join(',')}`
-        : '';
-    const messageDetails = normalizedMessage ? ` message="${normalizedMessage}"` : '';
-
-    console.error(
-        `[${normalizedRequestId}] recaptcha verify code=${normalizedCode} googleStatus=${normalizedStatus}${messageDetails}${providerDetails}`
-    );
-}
-
-async function verifyRecaptcha(token, request, expectedAction = '') {
-    const requestId = normalizeText(request?.requestId || '', 120);
-    const remoteIp = getRequestIpAddress(request);
-    const secret = normalizeText(process.env.RECAPTCHA_SECRET || RECAPTCHA_SECRET || '', 200);
-
-    if (!secret) {
-        logRecaptchaFailure({
-            requestId,
-            code: 'recaptcha_secret_missing',
-            message: 'RECAPTCHA_SECRET no está configurado'
-        });
-        return {
-            ok: false,
-            code: 'recaptcha_secret_missing',
-            status: 500
-        };
-    }
-
-    const normalizedToken = normalizeText(token, 4000);
-    if (!normalizedToken) {
-        logRecaptchaFailure({
-            requestId,
-            code: 'recaptcha_token_missing',
-            message: 'Token vacío en request body'
-        });
-        return {
-            ok: false,
-            code: 'recaptcha_token_missing',
-            status: 400
-        };
-    }
-
-    const payload = new URLSearchParams();
-    payload.set('secret', secret);
-    payload.set('response', normalizedToken);
-    if (remoteIp) {
-        payload.set('remoteip', remoteIp);
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), RECAPTCHA_VERIFY_TIMEOUT_MS);
-    let verificationResponse;
-    try {
-        verificationResponse = await fetch(RECAPTCHA_VERIFY_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: payload.toString(),
-            signal: controller.signal
-        });
-    } catch (error) {
-        const networkMessage = error?.name === 'AbortError'
-            ? `timeout_${RECAPTCHA_VERIFY_TIMEOUT_MS}ms`
-            : normalizeText(error?.message || 'network_error', 200);
-        logRecaptchaFailure({
-            requestId,
-            code: 'recaptcha_verify_unavailable',
-            googleStatus: null,
-            message: networkMessage
-        });
-        return {
-            ok: false,
-            code: 'recaptcha_verify_unavailable',
-            status: 503
-        };
-    } finally {
-        clearTimeout(timeoutId);
-    }
-
-    let verificationPayload = {};
-    try {
-        verificationPayload = await verificationResponse.json();
-    } catch (error) {
-        logRecaptchaFailure({
-            requestId,
-            code: 'recaptcha_verify_unavailable',
-            googleStatus: verificationResponse?.status,
-            message: normalizeText(error?.message || 'invalid_json', 200)
-        });
-        return {
-            ok: false,
-            code: 'recaptcha_verify_unavailable',
-            status: 503
-        };
-    }
-
-    if (!verificationResponse.ok) {
-        logRecaptchaFailure({
-            requestId,
-            code: 'recaptcha_verify_unavailable',
-            googleStatus: verificationResponse.status,
-            message: 'Google siteverify HTTP error',
-            providerCodes: verificationPayload?.['error-codes']
-        });
-        return {
-            ok: false,
-            code: 'recaptcha_verify_unavailable',
-            status: 503
-        };
-    }
-
-    const hasValidHostname = (() => {
-        const recaptchaHostname = String(verificationPayload?.hostname || '').trim().toLowerCase();
-        if (!recaptchaHostname) {
-            return true;
-        }
-
-        try {
-            const frontendHost = new URL(FRONTEND_URL).hostname.toLowerCase();
-            return (
-                recaptchaHostname === frontendHost
-                || recaptchaHostname === `www.${frontendHost}`
-                || frontendHost === `www.${recaptchaHostname}`
-            );
-        } catch {
-            return true;
-        }
-    })();
-
-    if (!verificationPayload?.success || !hasValidHostname) {
-        logRecaptchaFailure({
-            requestId,
-            code: 'recaptcha_failed',
-            googleStatus: verificationResponse.status,
-            message: hasValidHostname ? 'Google rechazó el token' : 'hostname_mismatch',
-            providerCodes: verificationPayload?.['error-codes']
-        });
-        return {
-            ok: false,
-            code: 'recaptcha_failed',
-            status: 400,
-            reason: hasValidHostname ? 'provider_rejected' : 'hostname_mismatch'
-        };
-    }
-
-    if (RECAPTCHA_VERSION === 'v3') {
-        const score = Number(verificationPayload?.score);
-        if (!Number.isFinite(score) || score < RECAPTCHA_MIN_SCORE) {
-            logRecaptchaFailure({
-                requestId,
-                code: 'recaptcha_failed',
-                googleStatus: verificationResponse.status,
-                message: `low_score:${Number.isFinite(score) ? score : 'n/a'}`
-            });
-            return {
-                ok: false,
-                code: 'recaptcha_failed',
-                status: 400,
-                reason: 'low_score'
-            };
-        }
-
-        const recaptchaAction = normalizeText(verificationPayload?.action, 80);
-        if (expectedAction && recaptchaAction && recaptchaAction !== expectedAction) {
-            logRecaptchaFailure({
-                requestId,
-                code: 'recaptcha_failed',
-                googleStatus: verificationResponse.status,
-                message: `action_mismatch:${recaptchaAction}`
-            });
-            return {
-                ok: false,
-                code: 'recaptcha_failed',
-                status: 400,
-                reason: 'action_mismatch'
-            };
-        }
-    }
-
-    return {
-        ok: true
-    };
-}
-
-async function assertRecaptchaOrThrow(request, expectedAction) {
-    const verification = await verifyRecaptcha(
-        request.body?.recaptchaToken,
-        request,
-        expectedAction
-    );
-
-    if (verification.ok) {
-        return;
-    }
-
-    const error = createApiError(verification.code || 'recaptcha_failed', verification.status || 400);
-    error.details = verification;
-    throw error;
-}
-
 async function submitFormspreeJson({ endpoint, payload }) {
     if (!endpoint) {
         throw createApiError('forms_provider_not_configured', 503);
@@ -464,20 +234,15 @@ app.disable('x-powered-by');
 const cspDirectives = {
     defaultSrc: ["'self'"],
     baseUri: ["'self'"],
-    scriptSrc: [
-        "'self'",
-        'https://www.google.com/recaptcha/',
-        'https://www.gstatic.com/recaptcha/'
-    ],
+    scriptSrc: ["'self'"],
     scriptSrcAttr: ["'none'"],
     connectSrc: [
         "'self'",
         'https://api.mercadopago.com',
-        'https://formspree.io',
-        'https://www.google.com/recaptcha/'
+        'https://formspree.io'
     ],
-    imgSrc: ["'self'", 'data:', 'https://www.google.com', 'https://www.gstatic.com'],
-    frameSrc: ["'self'", 'https://www.google.com', 'https://www.gstatic.com'],
+    imgSrc: ["'self'", 'data:'],
+    frameSrc: ["'self'"],
     formAction: ["'self'"],
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"]
@@ -709,10 +474,7 @@ app.use('/forms/', formsLimiter, requireAllowedOrigin);
 app.get('/forms/config', requireAllowedOrigin, (_request, response) => {
     return response.json({
         ok: true,
-        enabled: Boolean(RECAPTCHA_SITE_KEY),
-        version: RECAPTCHA_VERSION,
-        siteKey: RECAPTCHA_SITE_KEY,
-        minScore: RECAPTCHA_MIN_SCORE
+        enabled: false
     });
 });
 app.get('/api/csrf-token', (request, response) => {
@@ -914,7 +676,6 @@ async function submitQuoteViaFormspree({
 
 async function handleContactSubmission(req, res, next) {
     try {
-        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.CONTACTO);
         const contactPayload = validateContactPayload(req.body || {});
         const metadata = buildFormRequestMetadata(req);
 
@@ -950,7 +711,6 @@ async function handleContactSubmission(req, res, next) {
 
 async function handleQuoteSubmission(req, res, next) {
     try {
-        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.MEDIDA);
         const quotePayload = validateQuotePayload(req.body || {});
 
         // Honeypot.
@@ -1058,18 +818,6 @@ app.get('/health', (req, res) => {
     });
 });
 
-if (!isProduction) {
-    app.get('/debug/recaptcha', (req, res) => {
-        res.json({
-            ok: true,
-            requestId: req.requestId,
-            recaptchaSecretConfigured: Boolean(normalizeText(process.env.RECAPTCHA_SECRET || '', 200)),
-            recaptchaSiteKeyConfigured: Boolean(RECAPTCHA_SITE_KEY),
-            recaptchaVersion: RECAPTCHA_VERSION
-        });
-    });
-}
-
 app.use('/api', (req, res) => {
     res.status(404).json({ ok: false, error: 'Endpoint no encontrado' });
 });
@@ -1113,10 +861,9 @@ app.use((error, req, res, _next) => {
     }
 
     const status = error.status || 500;
-    const isRecaptchaCode = /^recaptcha_[a-z_]+$/i.test(String(error.message || ''));
     const payload = {
         ok: false,
-        error: status === 500 && !isRecaptchaCode
+        error: status === 500
             ? 'Error interno del servidor. Intenta nuevamente.'
             : error.message,
         requestId

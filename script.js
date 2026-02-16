@@ -51,10 +51,6 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
-const RECAPTCHA_V2_SITE_KEY = '6LdjBW4sAAAAAPaYMKU5daLqShZB3Vf4SUJDsq4Y';
-const RECAPTCHA_V2_SCRIPT_URL = 'https://www.google.com/recaptcha/api.js?render=explicit';
-let recaptchaScriptLoadPromise = null;
-const recaptchaWidgetIds = {};
 
 function buildApiUrl(path) {
     const normalizedPath = String(path || '').trim();
@@ -673,81 +669,6 @@ function buildResponsiveProductPicture(product) {
     `;
 }
 
-async function ensureRecaptchaScriptLoaded() {
-    if (
-        window.grecaptcha
-        && typeof window.grecaptcha.render === 'function'
-        && typeof window.grecaptcha.getResponse === 'function'
-    ) {
-        return window.grecaptcha;
-    }
-
-    if (!recaptchaScriptLoadPromise) {
-        recaptchaScriptLoadPromise = new Promise((resolve, reject) => {
-            const existingScript = document.querySelector('script[data-recaptcha="v2"]');
-            if (existingScript) {
-                existingScript.addEventListener('load', () => resolve(window.grecaptcha), { once: true });
-                existingScript.addEventListener('error', () => reject(new Error('No pudimos cargar reCAPTCHA.')), { once: true });
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = RECAPTCHA_V2_SCRIPT_URL;
-            script.async = true;
-            script.defer = true;
-            script.dataset.recaptcha = 'v2';
-            script.addEventListener('load', () => resolve(window.grecaptcha), { once: true });
-            script.addEventListener('error', () => reject(new Error('No pudimos cargar reCAPTCHA.')), { once: true });
-            document.head.appendChild(script);
-        });
-    }
-
-    const grecaptchaApi = await recaptchaScriptLoadPromise;
-    if (
-        !grecaptchaApi
-        || typeof grecaptchaApi.render !== 'function'
-        || typeof grecaptchaApi.getResponse !== 'function'
-    ) {
-        throw new Error('reCAPTCHA no está disponible en este navegador.');
-    }
-
-    return grecaptchaApi;
-}
-
-async function ensureRecaptchaWidget(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-        return null;
-    }
-
-    if (Number.isInteger(recaptchaWidgetIds[containerId])) {
-        return recaptchaWidgetIds[containerId];
-    }
-
-    const grecaptchaApi = await ensureRecaptchaScriptLoaded();
-    const widgetId = grecaptchaApi.render(container, {
-        sitekey: RECAPTCHA_V2_SITE_KEY
-    });
-    recaptchaWidgetIds[containerId] = widgetId;
-    return widgetId;
-}
-
-function getRecaptchaToken(widgetId) {
-    if (!window.grecaptcha || !Number.isInteger(widgetId)) {
-        return '';
-    }
-
-    return String(window.grecaptcha.getResponse(widgetId) || '').trim();
-}
-
-function resetRecaptchaWidget(widgetId) {
-    if (!window.grecaptcha || !Number.isInteger(widgetId)) {
-        return;
-    }
-
-    window.grecaptcha.reset(widgetId);
-}
-
 function setContactSubmitInfo(message, type = 'neutral') {
     const submitInfo = document.getElementById('contact-submit-info');
     if (!submitInfo) return;
@@ -757,31 +678,6 @@ function setContactSubmitInfo(message, type = 'neutral') {
     if (type === 'success') submitInfo.classList.add('is-success');
     if (type === 'error') submitInfo.classList.add('is-error');
     if (type === 'loading') submitInfo.classList.add('is-loading');
-}
-
-function getRecaptchaErrorMessage(errorCode) {
-    const normalizedCode = String(errorCode || '').trim().toLowerCase();
-    if (!normalizedCode) {
-        return '';
-    }
-
-    if (normalizedCode === 'recaptcha_token_missing') {
-        return 'Confirmá el captcha para continuar.';
-    }
-
-    if (normalizedCode === 'recaptcha_failed') {
-        return 'No pudimos validar el reCAPTCHA. Intentá nuevamente.';
-    }
-
-    if (normalizedCode === 'recaptcha_secret_missing' || normalizedCode === 'recaptcha_not_configured') {
-        return 'El formulario está temporalmente fuera de servicio. Probá nuevamente en unos minutos.';
-    }
-
-    if (normalizedCode === 'recaptcha_verify_unavailable') {
-        return 'No pudimos validar el captcha por un problema de red del servidor. Intentá nuevamente.';
-    }
-
-    return '';
 }
 
 function isValidEmailAddress(email) {
@@ -799,15 +695,6 @@ function setContactSubmittingState(isSubmitting) {
 function initContactFormSubmission() {
     const contactForm = document.getElementById('form-contacto');
     if (!contactForm) return;
-
-    let contactRecaptchaWidgetId = null;
-    ensureRecaptchaWidget('contact-recaptcha')
-        .then(widgetId => {
-            contactRecaptchaWidgetId = widgetId;
-        })
-        .catch(error => {
-            setContactSubmitInfo(error.message || 'No pudimos cargar reCAPTCHA.', 'error');
-        });
 
     let isSubmitting = false;
     contactForm.addEventListener('submit', async event => {
@@ -830,23 +717,10 @@ function initContactFormSubmission() {
 
         isSubmitting = true;
         setContactSubmittingState(true);
-        setContactSubmitInfo('Validando reCAPTCHA…', 'loading');
+        setContactSubmitInfo('Enviando…', 'loading');
 
         try {
-            if (!Number.isInteger(contactRecaptchaWidgetId)) {
-                contactRecaptchaWidgetId = await ensureRecaptchaWidget('contact-recaptcha');
-            }
-
-            const recaptchaToken = getRecaptchaToken(contactRecaptchaWidgetId);
-            if (!recaptchaToken) {
-                setContactSubmitInfo('Confirmá el captcha para continuar.', 'error');
-                return;
-            }
-
             const payload = Object.fromEntries(formData.entries());
-            payload.recaptchaToken = recaptchaToken;
-
-            setContactSubmitInfo('Enviando…', 'loading');
             const response = await fetch(buildApiUrl('/forms/contacto'), {
                 method: 'POST',
                 headers: {
@@ -865,16 +739,7 @@ function initContactFormSubmission() {
 
             if (response.ok && responsePayload.ok === true) {
                 contactForm.reset();
-                resetRecaptchaWidget(contactRecaptchaWidgetId);
                 setContactSubmitInfo('Mensaje enviado correctamente ✅', 'success');
-                return;
-            }
-
-            const responseError = String(responsePayload?.error || '').trim().toLowerCase();
-            const recaptchaErrorMessage = getRecaptchaErrorMessage(responseError);
-            if (recaptchaErrorMessage) {
-                resetRecaptchaWidget(contactRecaptchaWidgetId);
-                setContactSubmitInfo(recaptchaErrorMessage, 'error');
                 return;
             }
 
@@ -884,7 +749,6 @@ function initContactFormSubmission() {
             );
         } catch (error) {
             setContactSubmitInfo(error.message || 'Error al enviar. Intentá nuevamente.', 'error');
-            resetRecaptchaWidget(contactRecaptchaWidgetId);
         } finally {
             isSubmitting = false;
             setContactSubmittingState(false);
@@ -1157,14 +1021,6 @@ function initQuoteFormSubmission() {
 
     quoteSelectedFiles = [];
     bindQuoteFilesUi();
-    let quoteRecaptchaWidgetId = null;
-    ensureRecaptchaWidget('quote-recaptcha')
-        .then(widgetId => {
-            quoteRecaptchaWidgetId = widgetId;
-        })
-        .catch(error => {
-            setQuoteSubmitInfo(error.message || 'No pudimos cargar reCAPTCHA.', 'error');
-        });
 
     let isSubmitting = false;
     quoteForm.addEventListener('submit', async event => {
@@ -1230,27 +1086,15 @@ function initQuoteFormSubmission() {
 
         isSubmitting = true;
         setQuoteSubmittingState(true);
-        setQuoteSubmitInfo('Validando reCAPTCHA...', 'loading');
+        setQuoteSubmitInfo('Enviando solicitud de cotización...', 'loading');
 
         try {
-            if (!Number.isInteger(quoteRecaptchaWidgetId)) {
-                quoteRecaptchaWidgetId = await ensureRecaptchaWidget('quote-recaptcha');
-            }
-
-            const recaptchaToken = getRecaptchaToken(quoteRecaptchaWidgetId);
-            if (!recaptchaToken) {
-                setQuoteSubmitInfo('Confirmá el captcha para continuar.', 'error');
-                return;
-            }
-
             const payloadFormData = new FormData(quoteForm);
             payloadFormData.delete('photos');
             quoteSelectedFiles.forEach(file => {
                 payloadFormData.append('photos', file, file.name);
             });
-            payloadFormData.set('recaptchaToken', recaptchaToken);
 
-            setQuoteSubmitInfo('Enviando solicitud de cotización...', 'loading');
             const response = await fetch(buildApiUrl('/forms/medida'), {
                 method: 'POST',
                 headers: {
@@ -1267,26 +1111,18 @@ function initQuoteFormSubmission() {
             }
 
             if (!response.ok || payload?.ok === false) {
-                const responseError = String(payload?.error || '').trim().toLowerCase();
-                const recaptchaErrorMessage = getRecaptchaErrorMessage(responseError);
-                if (recaptchaErrorMessage) {
-                    throw new Error(recaptchaErrorMessage);
-                }
-
                 throw new Error(payload.error || 'No pudimos enviar la solicitud de cotización.');
             }
 
             quoteForm.reset();
             quoteSelectedFiles = [];
             renderQuoteSelectedFiles();
-            resetRecaptchaWidget(quoteRecaptchaWidgetId);
             setQuoteSubmitInfo(
                 payload.message || 'Solicitud enviada. Te vamos a contactar dentro de las próximas 24 horas hábiles.',
                 'success'
             );
         } catch (error) {
             setQuoteSubmitInfo(error.message || 'No pudimos enviar la solicitud de cotización.', 'error');
-            resetRecaptchaWidget(quoteRecaptchaWidgetId);
         } finally {
             isSubmitting = false;
             setQuoteSubmittingState(false);

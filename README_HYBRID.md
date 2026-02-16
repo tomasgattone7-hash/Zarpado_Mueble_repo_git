@@ -89,16 +89,16 @@ En `script.js`:
 - A Medida enfocada en valor percibido: proceso + galería + cotización asistida.
 - Tono de comunicación unificado en voseo argentino.
 
-## Formularios: AJAX + reCAPTCHA + Relay Backend
+## Formularios: AJAX + Relay Backend
 
 ### Flujo implementado
 - Frontend (Netlify) envía por AJAX a `https://api.zarpadomueble.com/forms/...`.
-- Backend (Railway) valida payload, aplica rate limit por IP y verifica reCAPTCHA con Google.
-- Si reCAPTCHA es válido, backend reenvía server-to-server a Formspree.
+- Backend (Railway) valida payload y aplica rate limit por IP.
+- Si el payload es válido, backend reenvía server-to-server a Formspree.
 - El frontend nunca envía directo a Formspree.
 
 ### Endpoints
-- `GET /forms/config`: entrega configuración pública de reCAPTCHA (`siteKey`, `version`).
+- `GET /forms/config`: estado de configuración de formularios.
 - `POST /forms/contacto`: formulario de contacto.
 - `POST /forms/medida`: formulario de cotización A Medida.
 
@@ -106,10 +106,6 @@ En `script.js`:
 Definilas en el servicio backend:
 
 ```bash
-RECAPTCHA_SECRET=
-RECAPTCHA_VERSION=v2
-RECAPTCHA_MIN_SCORE=0.5
-
 FRM_CONTACT_ID=xqedeven
 FRM_MEDIDA_ID=maqdjjkq
 
@@ -121,21 +117,12 @@ Opcionales:
 
 ```bash
 FORMS_RATE_LIMIT_MAX=10
-RECAPTCHA_VERIFY_TIMEOUT_MS=8000
 ```
 
 ### Dónde obtener cada valor
 - `FRM_CONTACT_ID` / `FRM_MEDIDA_ID`:
   - En Formspree, abrí cada form y copiá el ID de la ruta `f/xxxxxx`.
   - Si tenés un `action` histórico tipo `https://formspree.io/f/xqedeven`, el ID es `xqedeven`.
-- `RECAPTCHA_SECRET`:
-  - Google reCAPTCHA Admin Console.
-  - Registrar dominio `zarpadomueble.com` y `www.zarpadomueble.com`.
-  - Para local, agregar `localhost`.
-
-### Netlify
-- No requiere secret de reCAPTCHA.
-- Si usás despliegues preview en `*.netlify.app`, asegurate de incluirlos en la consola de reCAPTCHA para pruebas.
 
 ### Prueba rápida local
 Con backend levantado en `localhost:3000`:
@@ -143,7 +130,5 @@ Con backend levantado en `localhost:3000`:
 ```bash
 curl -i -X POST http://localhost:3000/forms/contacto \
   -H "Content-Type: application/json" \
-  -d '{"name":"t","email":"t@t.com","message":"mensaje de prueba","recaptchaToken":"TEST"}'
+  -d '{"name":"t","email":"t@t.com","message":"mensaje de prueba"}'
 ```
-
-Esperado con token inválido: `400` y `{ "ok": false, "error": "recaptcha_failed" }`.
