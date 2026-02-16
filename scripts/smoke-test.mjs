@@ -54,24 +54,20 @@ async function run() {
         }
 
         const health = await healthResponse.json();
-        if (health.status !== 'ok') {
+        if (health.ok !== true) {
             throw new Error('Healthcheck devolvio estado invalido');
         }
 
-        const cookieHeader = healthResponse.headers.get('set-cookie');
-        const sessionId = extractCookieValue(cookieHeader, 'zm_sid');
-        if (!sessionId) {
-            throw new Error('No se pudo obtener cookie de sesion CSRF desde set-cookie');
-        }
-
-        const csrfResponse = await fetch(`${baseUrl}/api/csrf-token`, {
-            headers: {
-                Cookie: `zm_sid=${encodeURIComponent(sessionId)}`
-            }
-        });
+        const csrfResponse = await fetch(`${baseUrl}/api/csrf-token`);
 
         if (!csrfResponse.ok) {
             throw new Error(`No se pudo obtener token CSRF (${csrfResponse.status})`);
+        }
+
+        const cookieHeader = csrfResponse.headers.get('set-cookie');
+        const sessionId = extractCookieValue(cookieHeader, 'zm_sid');
+        if (!sessionId) {
+            throw new Error('No se pudo obtener cookie de sesion CSRF desde set-cookie');
         }
 
         const csrfPayload = await csrfResponse.json();

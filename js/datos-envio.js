@@ -1,233 +1,211 @@
-function formatOrderCurrency(value) {
-    return `$${Number(value || 0).toLocaleString('es-AR')}`;
+const CHECKOUT_SHIPPING_STORAGE_KEY = 'checkoutShippingData';
+const CART_STORAGE_KEY = 'zarpadoCart';
+const PHONE_PATTERN = /^[0-9+()\-\s]{6,40}$/;
+
+function getStoredCart() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
+        return Array.isArray(parsed)
+            ? parsed.filter(item => Number.isInteger(Number.parseInt(item?.id, 10)) && Number.parseInt(item?.quantity, 10) > 0)
+            : [];
+    } catch (error) {
+        return [];
+    }
 }
 
-function normalizeOrderPostalCode(value) {
+function getStoredShippingData() {
+    try {
+        const raw = sessionStorage.getItem(CHECKOUT_SHIPPING_STORAGE_KEY) || localStorage.getItem(CHECKOUT_SHIPPING_STORAGE_KEY);
+        const parsed = JSON.parse(raw || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function setFieldError(fieldId, message = '') {
+    const errorElement = document.getElementById(`error-${fieldId}`);
+    const input = document.getElementById(fieldId);
+
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.hidden = !message;
+    }
+
+    if (input) {
+        input.setAttribute('aria-invalid', message ? 'true' : 'false');
+    }
+}
+
+function clearFieldErrors() {
+    [
+        'fullName',
+        'email',
+        'phone',
+        'addressLine',
+        'city',
+        'province',
+        'postalCode'
+    ].forEach(fieldId => setFieldError(fieldId, ''));
+}
+
+function isValidEmail(email) {
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(String(email || '').trim());
+}
+
+function normalizePostalCode(value) {
     return String(value || '').replace(/\D/g, '').slice(0, 4);
 }
 
-function setFormFeedback(message, type = '') {
-    const feedback = document.getElementById('delivery-form-feedback');
+function readFormData() {
+    const form = document.getElementById('shipping-step-form');
+    const formData = new FormData(form);
+    return {
+        fullName: String(formData.get('fullName') || '').trim(),
+        email: String(formData.get('email') || '').trim().toLowerCase(),
+        phone: String(formData.get('phone') || '').trim(),
+        addressLine: String(formData.get('addressLine') || '').trim(),
+        city: String(formData.get('city') || '').trim(),
+        province: String(formData.get('province') || '').trim(),
+        postalCode: normalizePostalCode(formData.get('postalCode'))
+    };
+}
+
+function validateFormData(data) {
+    clearFieldErrors();
+    let hasError = false;
+
+    if (data.fullName.length < 2) {
+        setFieldError('fullName', 'Ingresá tu nombre completo.');
+        hasError = true;
+    }
+
+    if (!isValidEmail(data.email)) {
+        setFieldError('email', 'Ingresá un email válido.');
+        hasError = true;
+    }
+
+    if (!PHONE_PATTERN.test(data.phone)) {
+        setFieldError('phone', 'Ingresá un teléfono válido.');
+        hasError = true;
+    }
+
+    if (!data.addressLine || data.addressLine.length < 4) {
+        setFieldError('addressLine', 'Ingresá calle y número.');
+        hasError = true;
+    }
+
+    if (!data.city) {
+        setFieldError('city', 'Ingresá la ciudad.');
+        hasError = true;
+    }
+
+    if (!data.province) {
+        setFieldError('province', 'Ingresá la provincia.');
+        hasError = true;
+    }
+
+    if (!/^\d{4}$/.test(data.postalCode)) {
+        setFieldError('postalCode', 'Ingresá un código postal válido de 4 dígitos.');
+        hasError = true;
+    }
+
+    return !hasError;
+}
+
+function prefillForm(data) {
+    const fields = ['fullName', 'email', 'phone', 'addressLine', 'city', 'province', 'postalCode'];
+    const legacyAddress = [String(data?.street || '').trim(), String(data?.streetNumber || '').trim()]
+        .filter(Boolean)
+        .join(' ');
+    fields.forEach(fieldId => {
+        const input = document.getElementById(fieldId);
+        if (!input) return;
+        const value = fieldId === 'addressLine'
+            ? String(data?.addressLine || legacyAddress || '')
+            : String(data?.[fieldId] || '');
+        input.value = fieldId === 'postalCode'
+            ? normalizePostalCode(value)
+            : value;
+    });
+}
+
+function setShippingFeedback(message, type = '') {
+    const feedback = document.getElementById('shipping-form-feedback');
     if (!feedback) return;
 
     feedback.textContent = message || '';
-    feedback.classList.remove('is-success', 'is-error');
+    feedback.classList.remove('is-success', 'is-error', 'is-loading');
     if (type === 'success') feedback.classList.add('is-success');
     if (type === 'error') feedback.classList.add('is-error');
+    if (type === 'loading') feedback.classList.add('is-loading');
 }
 
-function setAddressFieldsRequired(required) {
-    ['street', 'streetNumber', 'city', 'province', 'postalCode'].forEach(fieldId => {
-        const element = document.getElementById(fieldId);
-        if (!element) return;
-        element.required = required;
-    });
-}
-
-function getOrderRefFromQuery() {
-    const params = new URLSearchParams(window.location.search);
-    return String(
-        params.get('order_ref')
-        || params.get('external_reference')
-        || params.get('order_id')
-        || ''
-    ).trim().toUpperCase();
-}
-
-function getPreferenceIdFromQuery() {
-    const params = new URLSearchParams(window.location.search);
-    return String(params.get('preference_id') || '').trim();
-}
-
-async function loadOrderData() {
-    const orderRef = getOrderRefFromQuery();
-    const preferenceId = getPreferenceIdFromQuery();
-    const summaryOrderId = document.getElementById('order-id-text');
-    const hiddenOrderId = document.getElementById('delivery-order-id');
-    const hiddenOrderRef = document.getElementById('delivery-order-ref');
-
-    if (summaryOrderId) summaryOrderId.textContent = orderRef || 'No informado';
-    if (hiddenOrderRef) hiddenOrderRef.value = orderRef;
-
-    let response;
-    if (orderRef) {
-        response = await fetch(`/api/orders/${encodeURIComponent(orderRef)}`, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            credentials: 'include'
-        });
-    } else if (preferenceId) {
-        response = await fetch(`/api/orders/by-preference/${encodeURIComponent(preferenceId)}`, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            credentials: 'include'
-        });
-    } else {
-        throw new Error('No recibimos un número de pedido válido. Revisá el enlace de pago.');
-    }
-
-    const payload = await response.json();
-    if (!response.ok) {
-        throw new Error(payload.error || 'No pudimos cargar los datos del pedido.');
-    }
-
-    if (summaryOrderId) {
-        summaryOrderId.textContent = payload.orderRef || payload.orderId || orderRef || 'No informado';
-    }
-    if (hiddenOrderId) hiddenOrderId.value = payload.orderId || '';
-    if (hiddenOrderRef) hiddenOrderRef.value = payload.orderRef || payload.externalReference || orderRef || '';
-
-    return payload;
-}
-
-function applyOrderToForm(orderData) {
-    const methodText = document.getElementById('order-delivery-method');
-    const totalText = document.getElementById('order-total-text');
-    const modeNote = document.getElementById('delivery-mode-note');
-    const shippingAddressSection = document.getElementById('shipping-address-section');
+function bindPostalCodeMask() {
     const postalCodeInput = document.getElementById('postalCode');
+    if (!postalCodeInput) return;
 
-    const isPickup = orderData?.delivery?.method === 'pickup';
-
-    if (methodText) {
-        methodText.textContent = isPickup
-            ? `Retiro por fábrica (${orderData.factoryPickup?.address || ''})`
-            : `Envío a domicilio (CP ${orderData?.delivery?.postalCode || '-'})`;
-    }
-
-    if (totalText) {
-        totalText.textContent = formatOrderCurrency(orderData?.totals?.total || 0);
-    }
-
-    if (modeNote) {
-        modeNote.textContent = isPickup
-            ? `Retiro sin costo. ${orderData.factoryPickup?.note || ''}`
-            : 'Instalación solo en Buenos Aires y sujeta a disponibilidad por código postal. Instalaciones complejas se cotizan aparte.';
-    }
-
-    if (shippingAddressSection) {
-        shippingAddressSection.hidden = isPickup;
-    }
-
-    setAddressFieldsRequired(!isPickup);
-
-    if (postalCodeInput) {
-        if (isPickup) {
-            postalCodeInput.value = '';
-        } else {
-            postalCodeInput.value = normalizeOrderPostalCode(orderData?.delivery?.postalCode || '');
-        }
-    }
-}
-
-function readPaymentQueryParams() {
-    const params = new URLSearchParams(window.location.search);
-    const paymentId = String(params.get('payment_id') || params.get('collection_id') || '').trim();
-    const merchantOrderId = String(params.get('merchant_order_id') || '').trim();
-    const preferenceId = String(params.get('preference_id') || '').trim();
-    const paymentStatus = String(params.get('status') || params.get('collection_status') || '').trim();
-
-    const paymentIdInput = document.getElementById('delivery-payment-id');
-    const merchantOrderIdInput = document.getElementById('delivery-merchant-order-id');
-    const preferenceIdInput = document.getElementById('delivery-preference-id');
-    const paymentStatusInput = document.getElementById('delivery-payment-status');
-
-    if (paymentIdInput) paymentIdInput.value = paymentId;
-    if (merchantOrderIdInput) merchantOrderIdInput.value = merchantOrderId;
-    if (preferenceIdInput) preferenceIdInput.value = preferenceId;
-    if (paymentStatusInput) paymentStatusInput.value = paymentStatus;
-
-    return { paymentId, merchantOrderId, preferenceId, paymentStatus };
-}
-
-function buildDeliveryDetailsPayload() {
-    const form = document.getElementById('delivery-data-form');
-    const formData = new FormData(form);
-    const payload = {};
-
-    formData.forEach((value, key) => {
-        payload[key] = String(value || '').trim();
+    postalCodeInput.addEventListener('input', () => {
+        postalCodeInput.value = normalizePostalCode(postalCodeInput.value);
     });
-
-    payload.postalCode = normalizeOrderPostalCode(payload.postalCode);
-    payload.orderId = String(payload.orderId || '').toUpperCase();
-    payload.orderRef = String(payload.orderRef || '').toUpperCase();
-
-    if (payload.receiverType !== 'otra_persona') {
-        payload.receiverName = '';
-    }
-
-    return payload;
 }
 
-async function submitDeliveryData(event, orderData) {
-    event.preventDefault();
-    setFormFeedback('');
-
-    const submitButton = document.getElementById('delivery-submit-btn');
-    if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = 'Guardando...';
+function redirectIfCartMissing() {
+    const cart = getStoredCart();
+    if (cart.length > 0) {
+        return false;
     }
 
-    try {
-        const csrfToken = await getCsrfToken();
-        const payload = buildDeliveryDetailsPayload();
-
-        const response = await fetch('/api/order/details', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || 'No pudimos guardar los datos.');
-        }
-
-        setFormFeedback(result.message || 'Datos recibidos correctamente.', 'success');
-
-        try {
-            localStorage.removeItem('zarpadoCart');
-        } catch (error) {
-            // Ignore blocked storage scenarios.
-        }
-    } catch (error) {
-        setFormFeedback(error.message || 'Ocurrió un error al guardar tus datos.', 'error');
-    } finally {
-        if (submitButton) {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Guardar datos';
-        }
-    }
+    setShippingFeedback('Tu carrito está vacío. Te llevamos a la tienda para continuar.', 'error');
+    setTimeout(() => {
+        window.location.href = '/tienda';
+    }, 1200);
+    return true;
 }
 
-async function initDeliveryDataPage() {
+document.addEventListener('DOMContentLoaded', () => {
     if (!window.location.pathname.toLowerCase().includes('datos-envio')) {
         return;
     }
 
-    try {
-        const orderData = await loadOrderData();
-        const paymentQuery = readPaymentQueryParams();
+    if (redirectIfCartMissing()) {
+        return;
+    }
 
-        if (paymentQuery.preferenceId && orderData.preferenceId && paymentQuery.preferenceId !== orderData.preferenceId) {
-            throw new Error('El enlace no coincide con la preferencia de pago de este pedido.');
+    bindPostalCodeMask();
+    prefillForm(getStoredShippingData());
+
+    const form = document.getElementById('shipping-step-form');
+    const submitButton = document.getElementById('shipping-step-submit');
+    if (!form || !submitButton) return;
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const data = readFormData();
+        if (!validateFormData(data)) {
+            setShippingFeedback('Revisá los campos marcados para continuar.', 'error');
+            return;
         }
 
-        applyOrderToForm(orderData);
+        submitButton.disabled = true;
+        submitButton.textContent = 'Guardando...';
+        setShippingFeedback('Guardando datos de envío...', 'loading');
 
-        const form = document.getElementById('delivery-data-form');
-        form?.addEventListener('submit', event => submitDeliveryData(event, orderData));
-    } catch (error) {
-        setFormFeedback(error.message || 'No pudimos cargar el pedido.', 'error');
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    initDeliveryDataPage();
+        try {
+            const payload = {
+                ...data,
+                savedAt: new Date().toISOString()
+            };
+            sessionStorage.setItem(CHECKOUT_SHIPPING_STORAGE_KEY, JSON.stringify(payload));
+            localStorage.setItem(CHECKOUT_SHIPPING_STORAGE_KEY, JSON.stringify(payload));
+            setShippingFeedback('Datos guardados. Avanzando al paso 2...', 'success');
+            setTimeout(() => {
+                window.location.href = '/confirmacion';
+            }, 350);
+        } catch (error) {
+            setShippingFeedback('No pudimos guardar los datos. Intentá nuevamente.', 'error');
+            submitButton.disabled = false;
+            submitButton.textContent = 'Continuar a confirmación';
+        }
+    });
 });

@@ -10,6 +10,7 @@
   "shippingRules": [
     {
       "label": "CABA",
+      "type": "amba",
       "ranges": [
         { "from": "1000", "to": "1499" }
       ],
@@ -17,6 +18,7 @@
     },
     {
       "label": "AMBA y GBA",
+      "type": "amba",
       "ranges": [
         { "from": "1500", "to": "1899" }
       ],
@@ -24,6 +26,7 @@
     },
     {
       "label": "Buenos Aires interior",
+      "type": "interior",
       "ranges": [
         { "from": "1900", "to": "2999" }
       ],
@@ -31,6 +34,7 @@
     },
     {
       "label": "Centro y Litoral",
+      "type": "interior",
       "ranges": [
         { "from": "3000", "to": "3999" }
       ],
@@ -38,6 +42,7 @@
     },
     {
       "label": "NOA",
+      "type": "interior",
       "ranges": [
         { "from": "4000", "to": "4999" }
       ],
@@ -45,6 +50,7 @@
     },
     {
       "label": "Cuyo",
+      "type": "interior",
       "ranges": [
         { "from": "5000", "to": "5999" }
       ],
@@ -52,6 +58,7 @@
     },
     {
       "label": "Centro-Pampa",
+      "type": "interior",
       "ranges": [
         { "from": "6000", "to": "6999" }
       ],
@@ -59,6 +66,7 @@
     },
     {
       "label": "Patagonia norte",
+      "type": "interior",
       "ranges": [
         { "from": "7000", "to": "7999" }
       ],
@@ -66,6 +74,7 @@
     },
     {
       "label": "Patagonia sur",
+      "type": "interior",
       "ranges": [
         { "from": "8000", "to": "8999" }
       ],
@@ -73,6 +82,7 @@
     },
     {
       "label": "Extremo sur",
+      "type": "interior",
       "ranges": [
         { "from": "9000", "to": "9999" }
       ],
@@ -87,6 +97,17 @@
       { "from": "1712", "to": "1714" },
       { "from": "1722", "to": "1738" },
       { "from": "1740", "to": "1749" }
+    ]
+  },
+  "interiorFreightTable": {
+    "densityFactorKgPerM3": 250,
+    "tiers": [
+      { "label": "hasta 40 kg", "maxChargeableKg": 40, "cost": 65000 },
+      { "label": "hasta 80 kg", "maxChargeableKg": 80, "cost": 90000 },
+      { "label": "hasta 120 kg", "maxChargeableKg": 120, "cost": 120000 },
+      { "label": "hasta 180 kg", "maxChargeableKg": 180, "cost": 155000 },
+      { "label": "hasta 260 kg", "maxChargeableKg": 260, "cost": 195000 },
+      { "label": "mas de 260 kg", "maxChargeableKg": 100000, "cost": 245000 }
     ]
   }
 }

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tienda | Zarpado Mueble - Muebles Estándar</title>
+    <meta name="description"
+        content="Comprá muebles estándar con precio final y pago online en Zarpado Mueble. Stock real, envío estimado y checkout seguro con Mercado Pago.">
+    <link rel="canonical" href="https://zarpadomueble.com/tienda">
+    <link rel="preload" as="image" href="assets/optimized/16-960.webp" fetchpriority="high">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style"
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;700&display=swap">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;700&display=swap">
+    <noscript>
+        <link rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;700&display=swap">
+    </noscript>
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0"
+        crossorigin="anonymous">
+    <noscript>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    </noscript>
+    <link rel="stylesheet" href="styles.min.css">
+    <link rel="icon" type="image/x-icon" href="/assets/favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+    <meta name="theme-color" content="#000000">
+</head>
+
+<body data-page="tienda">
+    <header class="navbar"></header>
+
+    <section class="hero" style="height: 62vh; min-height: 420px;">
+        <div class="hero-slider">
+            <div class="hero-slide active" style="background-image: url('assets/optimized/16-960.webp');"></div>
+        </div>
+        <div class="hero-content">
+            <span class="section-tag" style="color: var(--color-accent); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">Tienda</span>
+            <h1 class="hero-title" style="font-size: 3.2rem;">Muebles estándar listos para comprar</h1>
+            <p class="section-desc" style="color: #eee; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                Precio final, stock real y envío estimado para que compres con claridad desde el primer click.
+            </p>
+            <div class="hero-btn-wrapper">
+                <a href="#catalogo" class="btn btn-primary">Ver productos</a>
+                <a href="/a-medida" class="btn btn-outline">Proyecto a medida</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-catalog-spacing" id="catalogo" style="padding-top: 0;">
+        <div class="container">
+            <div class="text-center reveal">
+                <span class="section-tag">Colección</span>
+                <h1 class="section-title">Tienda de muebles premium en Argentina</h1>
+                <p class="section-desc">Filtrá por categoría, revisá stock real y avanzá al checkout con Mercado Pago en pocos pasos.</p>
+            </div>
+
+            <article class="shipping-data-card reveal" style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 0.7rem;">Garantía</h3>
+                <p style="color: var(--color-text-muted); line-height: 1.85; margin-bottom: 0.9rem;">
+                    Comprás con respaldo real: todos los muebles de Tienda incluyen <strong>12 meses de garantía por defectos de fabricación</strong>.
+                    Si surge un problema, nuestro equipo te acompaña con una gestión clara y rápida para darte solución.
+                </p>
+                <a href="/garantia" class="btn btn-outline" style="padding: 10px 16px;">Ver garantía</a>
+            </article>
+
+            <div class="catalog-filters reveal" role="toolbar" aria-label="Filtros de tienda">
+                <button type="button" class="btn-filter js-catalog-filter active" data-filter="all" aria-pressed="true">Todos</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Escritorios" aria-pressed="false">Escritorios</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Cocinas" aria-pressed="false">Cocinas</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Placards" aria-pressed="false">Placards</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Living" aria-pressed="false">Living</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Comedor" aria-pressed="false">Comedor</button>
+            </div>
+            <p id="catalogFilterResult" class="catalog-filter-result">Mostrando productos en todas las categorías.</p>
+            <p class="text-center" style="margin-bottom: 1rem; color: var(--color-text-muted);">
+                Ver landing por categoría:
+                <a href="/tienda/escritorios">Escritorios</a> |
+                <a href="/tienda/cocinas">Cocinas</a> |
+                <a href="/tienda/placards">Placards</a> |
+                <a href="/tienda/living">Living</a> |
+                <a href="/tienda/comedor">Comedor</a>
+            </p>
+
+            <div class="products-grid" id="products-grid">
+                <!-- Render por script.min.js -->
+            </div>
+        </div>
+    </section>
+
+    <section class="section" style="padding-top: 0;">
+        <div class="container">
+            <div class="shop-policy-grid">
+                <article class="shop-policy-card reveal-up">
+                    <h3>Política de envíos - Tienda</h3>
+                    <ul>
+                        <li>Despachamos a todo el país con seguimiento.</li>
+                        <li>El costo final depende del código postal y se calcula en checkout.</li>
+                        <li>También podés retirar por fábrica en Moreno (Buenos Aires).</li>
+                    </ul>
+                    <p style="margin-top: 0.8rem;"><a href="/envios" class="btn btn-outline" style="padding: 10px 16px;">Ver política</a></p>
+                </article>
+                <article class="shop-policy-card reveal-up" style="transition-delay: 0.1s;">
+                    <h3>Política de devoluciones - Tienda</h3>
+                    <ul>
+                        <li>Tenés 10 días corridos para reportar defectos de fabricación.</li>
+                        <li>Si el producto llega dañado por transporte, te asistimos en el recambio.</li>
+                        <li>Leé términos completos en nuestra política de reembolso.</li>
+                    </ul>
+                    <p style="margin-top: 0.8rem;"><a href="/reembolso" class="btn btn-outline" style="padding: 10px 16px;">Ver política</a></p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <div data-trust-block></div>
+    <footer class="footer"></footer>
+
+    <script type="application/ld+json" id="tienda-product-schema">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Product",
+      "name": "Escritorio Gamer Pro",
+      "image": "https://zarpadomueble.com/assets/desk_gamer.png",
+      "brand": { "@type": "Brand", "name": "Zarpado Mueble" },
+      "offers": { "@type": "Offer", "priceCurrency": "ARS", "price": "185000", "availability": "https://schema.org/InStock", "url": "https://zarpadomueble.com/tienda" }
+    },
+    {
+      "@type": "Product",
+      "name": "Rack TV Minimalista",
+      "image": "https://zarpadomueble.com/assets/tv_rack.png",
+      "brand": { "@type": "Brand", "name": "Zarpado Mueble" },
+      "offers": { "@type": "Offer", "priceCurrency": "ARS", "price": "210000", "availability": "https://schema.org/InStock", "url": "https://zarpadomueble.com/tienda" }
+    },
+    {
+      "@type": "Product",
+      "name": "Vajillero Nórdico",
+      "image": "https://zarpadomueble.com/assets/sideboard.png",
+      "brand": { "@type": "Brand", "name": "Zarpado Mueble" },
+      "offers": { "@type": "Offer", "priceCurrency": "ARS", "price": "230000", "availability": "https://schema.org/InStock", "url": "https://zarpadomueble.com/tienda" }
+    }
+  ]
+}
+    </script>
+
+    <script src="js/site-shell.min.js"></script>
+    <script src="script.min.js"></script>
+    <script src="js/logo-theme.min.js" defer></script>
+</body>
+
+</html>

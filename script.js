@@ -190,14 +190,6 @@ document.addEventListener('click', event => {
         return;
     }
 
-    if (cartSidebar?.classList.contains('open')) {
-        const clickedInsideCart = cartSidebar.contains(eventTarget);
-        const clickedCartTrigger = eventTarget.closest('.js-toggle-cart');
-        if (!clickedInsideCart && !clickedCartTrigger) {
-            closeCart();
-        }
-    }
-
     if (navMenu?.classList.contains('active')) {
         const clickedInsideMenu = navMenu.contains(eventTarget);
         const clickedHamburger = hamburger?.contains(eventTarget);
@@ -241,8 +233,10 @@ const observerOptions = {
 };
 
 let revealObserver = null;
+const shouldDisableRevealAnimations = typeof window !== 'undefined'
+    && window.matchMedia('(max-width: 768px), (prefers-reduced-motion: reduce)').matches;
 
-if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
+if (!shouldDisableRevealAnimations && typeof window !== 'undefined' && 'IntersectionObserver' in window) {
     revealObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -269,21 +263,153 @@ document.querySelectorAll('.reveal-up').forEach(observeRevealElement);
 
 
 /* --- Product Catalog --- */
-const products = [
-    // --- Cart Items ---
-    { id: 1, name: 'Escritorio Gamer Pro', specs: 'Melamina 18mm / Pasacables / LED', price: 185000, image: 'assets/desk_gamer.png', action: 'cart' },
-    { id: 2, name: 'Rack TV Minimalista', specs: 'Para TV 65" / Cajones Push', price: 210000, image: 'assets/tv_rack.png', action: 'cart' },
-    { id: 3, name: 'Mesa Ratona Industrial', specs: 'Hierro estructural / Tapa Paraíso', price: 95000, image: 'assets/coffee_table.png', action: 'cart' },
-    { id: 4, name: 'Biblioteca Moderna', specs: 'Estantería asimétrica / Melamina Negra', price: 145000, image: 'assets/library.png', action: 'cart' },
-    { id: 5, name: 'Vajillero Nórdico', specs: 'Patas de madera maciza / Puertas blancas', price: 230000, image: 'assets/sideboard.png', action: 'cart' },
-    { id: 6, name: 'Escritorio Home Office', specs: 'Diseño compacto / Cajonera móvil', price: 120000, image: 'assets/office_desk.png', action: 'cart' },
-    { id: 7, name: 'Gabinete Multiuso', specs: 'Almacenamiento versátil', price: 180000, image: 'assets/cabinet.webp', action: 'cart' },
-    { id: 8, name: 'Silla de Diseño', specs: 'Ergonómica / Madera', price: 85000, image: 'assets/chair.webp', action: 'cart' },
-    { id: 9, name: 'Mesa Comedor', specs: 'Para 6 personas / Resistente', price: 250000, image: 'assets/table.webp', action: 'cart' },
-    { id: 10, name: 'Mueble TV Flotante', specs: 'Diseño aéreo / Moderno', price: 200000, image: 'assets/tv_unit.webp', action: 'cart' },
-    { id: 11, name: 'Escritorio Melamina', specs: 'Básico / Funcional', price: 130000, image: 'assets/melamine_desk.webp', action: 'cart' },
+const FALLBACK_STORE_PRODUCTS = [
+    {
+        id: 1,
+        name: 'Escritorio Gamer Pro',
+        specs: 'Melamina 18mm, pasacables y led frontal',
+        price: 185000,
+        image: 'assets/desk_gamer.png',
+        category: 'Escritorios',
+        stock: 4,
+        fulfillmentModel: 'stock',
+        availabilityMessage: 'En stock - Envio en 48/72 hs',
+        shippingEstimate: '48/72 hs',
+        action: 'cart'
+    },
+    {
+        id: 2,
+        name: 'Rack TV Minimalista',
+        specs: 'Para TV 65\", cajones push-open',
+        price: 210000,
+        image: 'assets/tv_rack.png',
+        category: 'Living',
+        stock: 3,
+        fulfillmentModel: 'stock',
+        availabilityMessage: 'En stock - Envio en 48/72 hs',
+        shippingEstimate: '48/72 hs',
+        action: 'cart'
+    },
+    {
+        id: 3,
+        name: 'Mesa Ratona Industrial',
+        specs: 'Estructura de hierro y tapa paraíso',
+        price: 95000,
+        image: 'assets/coffee_table.png',
+        category: 'Living',
+        stock: 8,
+        fulfillmentModel: 'stock',
+        availabilityMessage: 'En stock - Envio en 48/72 hs',
+        shippingEstimate: '48/72 hs',
+        action: 'cart'
+    },
+    {
+        id: 4,
+        name: 'Biblioteca Moderna',
+        specs: 'Estantería asimétrica en melamina',
+        price: 145000,
+        image: 'assets/library.png',
+        category: 'Living',
+        stock: 0,
+        fulfillmentModel: 'made_to_order',
+        availabilityMessage: 'Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles',
+        shippingEstimate: '10 a 20 dias habiles',
+        action: 'cart'
+    },
+    {
+        id: 5,
+        name: 'Vajillero Nórdico',
+        specs: 'Módulo de guardado para cocina/comedor',
+        price: 230000,
+        image: 'assets/sideboard.png',
+        category: 'Cocinas',
+        stock: 0,
+        fulfillmentModel: 'made_to_order',
+        availabilityMessage: 'Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles',
+        shippingEstimate: '10 a 20 dias habiles',
+        action: 'cart'
+    },
+    {
+        id: 6,
+        name: 'Escritorio Home Office',
+        specs: 'Diseño compacto con cajonera móvil',
+        price: 120000,
+        image: 'assets/office_desk.png',
+        category: 'Escritorios',
+        stock: 6,
+        fulfillmentModel: 'stock',
+        availabilityMessage: 'En stock - Envio en 48/72 hs',
+        shippingEstimate: '48/72 hs',
+        action: 'cart'
+    },
+    {
+        id: 7,
+        name: 'Gabinete Multiuso',
+        specs: 'Guardado versátil para dormitorio o vestidor',
+        price: 180000,
+        image: 'assets/cabinet.webp',
+        category: 'Placards',
+        stock: 0,
+        fulfillmentModel: 'made_to_order',
+        availabilityMessage: 'Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles',
+        shippingEstimate: '10 a 20 dias habiles',
+        action: 'cart'
+    },
+    {
+        id: 8,
+        name: 'Silla de Diseño',
+        specs: 'Ergonómica con estructura reforzada',
+        price: 85000,
+        image: 'assets/chair.webp',
+        category: 'Comedor',
+        stock: 12,
+        fulfillmentModel: 'stock',
+        availabilityMessage: 'En stock - Envio en 48/72 hs',
+        shippingEstimate: '48/72 hs',
+        action: 'cart'
+    },
+    {
+        id: 9,
+        name: 'Mesa Comedor',
+        specs: 'Para 6 personas, tapa resistente',
+        price: 250000,
+        image: 'assets/table.webp',
+        category: 'Comedor',
+        stock: 0,
+        fulfillmentModel: 'made_to_order',
+        availabilityMessage: 'Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles',
+        shippingEstimate: '10 a 20 dias habiles',
+        action: 'cart'
+    },
+    {
+        id: 10,
+        name: 'Mueble TV Flotante',
+        specs: 'Diseño aéreo con pasacables oculto',
+        price: 200000,
+        image: 'assets/tv_unit.webp',
+        category: 'Living',
+        stock: 0,
+        fulfillmentModel: 'made_to_order',
+        availabilityMessage: 'Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles',
+        shippingEstimate: '10 a 20 dias habiles',
+        action: 'cart'
+    },
+    {
+        id: 11,
+        name: 'Escritorio Melamina',
+        specs: 'Formato clásico para estudio',
+        price: 130000,
+        image: 'assets/melamine_desk.webp',
+        category: 'Escritorios',
+        stock: 7,
+        fulfillmentModel: 'stock',
+        availabilityMessage: 'En stock - Envio en 48/72 hs',
+        shippingEstimate: '48/72 hs',
+        action: 'cart'
+    }
+];
 
-    // --- Quote Items (Proyectos) ---
+const QUOTE_PRODUCTS = [
     { id: 12, name: 'Cocina Integral', specs: 'Diseño y fabricación a medida', price: 0, image: 'assets/kitchen.webp', action: 'quote' },
     { id: 13, name: 'Placard Vestidor', specs: 'Interior completo / Puertas corredizas', price: 0, image: 'assets/closet.webp', action: 'quote' },
     { id: 14, name: 'Proyecto Living', specs: 'Ambientación completa', price: 0, image: 'assets/11.jpg', action: 'quote' },
@@ -297,39 +423,186 @@ const products = [
     { id: 22, name: 'Home Studio', specs: 'Escritorios y bibliotecas', price: 0, image: 'assets/19.webp', action: 'quote' }
 ];
 
-const CART_PRODUCT_MAP = products
-    .filter(product => product.action === 'cart')
-    .reduce((acc, product) => {
-        acc[product.id] = product;
-        return acc;
-    }, {});
+let products = [...FALLBACK_STORE_PRODUCTS, ...QUOTE_PRODUCTS];
+
+function buildCartProductMap(list) {
+    return list
+        .filter(product => product.action === 'cart')
+        .reduce((acc, product) => {
+            acc[product.id] = product;
+            return acc;
+        }, {});
+}
+
+let CART_PRODUCT_MAP = buildCartProductMap(products);
 
 const INITIAL_PRODUCTS_VISIBLE = 12;
 let visibleProductsCount = INITIAL_PRODUCTS_VISIBLE;
-let csrfTokenCache = '';
+let activeCatalogFilter = 'all';
+const PRODUCT_IMAGE_SIZES = '(max-width: 768px) 92vw, (max-width: 1200px) 45vw, 280px';
 
-async function getCsrfToken(forceRefresh = false) {
-    if (csrfTokenCache && !forceRefresh) {
-        return csrfTokenCache;
+const SHOP_PAGE_KEYS = new Set(['tienda', 'catalogo']);
+
+function getCurrentPageKey() {
+    const bodyPage = String(document.body?.dataset?.page || '').trim().toLowerCase();
+    if (bodyPage) {
+        return bodyPage;
     }
 
-    const response = await fetch('/api/csrf-token', {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        credentials: 'include'
-    });
+    const path = String(window.location.pathname || '').toLowerCase();
+    const fileName = path.split('/').pop() || 'index.html';
+    return fileName.replace('.html', '');
+}
 
-    if (!response.ok) {
-        throw new Error('No se pudo obtener token CSRF');
+function isShopPage() {
+    return SHOP_PAGE_KEYS.has(getCurrentPageKey());
+}
+
+const DEFAULT_STORE_CONFIG = Object.freeze({
+    acceptedPaymentMethods: ['mercadopago', 'bank_transfer', 'cash_pickup'],
+    stockMessage: 'En stock - Envio en 48/72 hs',
+    madeToOrderMessage: 'Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles',
+    warrantyMonths: 12,
+    coverage: 'AMBA + interior del pais + retiro en taller'
+});
+
+let storeConfig = { ...DEFAULT_STORE_CONFIG };
+
+function normalizeStoreProductFromApi(product) {
+    const id = Number.parseInt(product?.id, 10);
+    const price = Number.parseInt(product?.price, 10);
+    const stock = Math.max(0, Number.parseInt(product?.stock, 10) || 0);
+    const fulfillmentModel = String(product?.fulfillmentModel || '').toLowerCase() === 'made_to_order'
+        ? 'made_to_order'
+        : 'stock';
+    const availabilityMessage = String(product?.availabilityMessage || '').trim()
+        || (fulfillmentModel === 'made_to_order'
+            ? storeConfig.madeToOrderMessage
+            : storeConfig.stockMessage);
+
+    if (!Number.isInteger(id) || id < 1 || !Number.isInteger(price) || price < 0) {
+        return null;
     }
 
-    const data = await response.json();
-    if (!data?.csrfToken) {
-        throw new Error('Token CSRF inválido');
+    return {
+        id,
+        name: String(product?.name || '').trim(),
+        specs: String(product?.specs || '').trim(),
+        price,
+        image: String(product?.image || '').trim(),
+        category: String(product?.category || 'General').trim(),
+        stock,
+        fulfillmentModel,
+        availabilityMessage,
+        shippingEstimate: fulfillmentModel === 'made_to_order'
+            ? '10 a 20 dias habiles'
+            : '48/72 hs',
+        weightKg: Number(product?.weightKg || 0),
+        volumeM3: Number(product?.volumeM3 || 0),
+        action: 'cart'
+    };
+}
+
+async function loadStoreConfig() {
+    try {
+        const response = await fetch('/api/store/config', {
+            method: 'GET',
+            headers: { Accept: 'application/json' }
+        });
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+        if (!data?.ok || !data?.tienda) {
+            return;
+        }
+
+        const acceptedPaymentMethods = Array.isArray(data.tienda.acceptedPaymentMethods)
+            ? data.tienda.acceptedPaymentMethods
+                .map(method => String(method || '').trim().toLowerCase())
+                .filter(Boolean)
+            : DEFAULT_STORE_CONFIG.acceptedPaymentMethods;
+
+        storeConfig = {
+            acceptedPaymentMethods: acceptedPaymentMethods.length > 0
+                ? acceptedPaymentMethods
+                : DEFAULT_STORE_CONFIG.acceptedPaymentMethods,
+            stockMessage: String(data.tienda.stockMessage || DEFAULT_STORE_CONFIG.stockMessage).trim(),
+            madeToOrderMessage: String(data.tienda.madeToOrderMessage || DEFAULT_STORE_CONFIG.madeToOrderMessage).trim(),
+            warrantyMonths: Number.parseInt(data.tienda.warrantyMonths, 10) || DEFAULT_STORE_CONFIG.warrantyMonths,
+            coverage: String(data.tienda.coverage || DEFAULT_STORE_CONFIG.coverage).trim()
+        };
+    } catch (error) {
+        storeConfig = { ...DEFAULT_STORE_CONFIG };
+    }
+}
+
+async function loadStoreCatalog() {
+    try {
+        await loadStoreConfig();
+        const response = await fetch('/api/store/catalog', {
+            method: 'GET',
+            headers: { Accept: 'application/json' }
+        });
+        if (!response.ok) {
+            return false;
+        }
+
+        const data = await response.json();
+        const apiProducts = Array.isArray(data?.products)
+            ? data.products
+                .map(normalizeStoreProductFromApi)
+                .filter(Boolean)
+            : [];
+        if (apiProducts.length === 0) {
+            return false;
+        }
+
+        products = [...apiProducts, ...QUOTE_PRODUCTS];
+        CART_PRODUCT_MAP = buildCartProductMap(products);
+        cart = sanitizeCart(cart);
+        persistCart(cart);
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function getOptimizedImageBase(imagePath) {
+    const imageName = String(imagePath || '')
+        .split('/')
+        .pop()
+        .replace(/\.[a-z0-9]+$/i, '');
+
+    return imageName ? `assets/optimized/${imageName}` : '';
+}
+
+function buildResponsiveProductPicture(product) {
+    const fallbackImage = String(product.image || '').trim();
+    const optimizedBase = getOptimizedImageBase(fallbackImage);
+    if (!fallbackImage || !optimizedBase) {
+        return `<img src="${fallbackImage}" alt="${product.name}" loading="lazy" decoding="async" width="1024" height="1024">`;
     }
 
-    csrfTokenCache = String(data.csrfToken);
-    return csrfTokenCache;
+    const avifSet = `${optimizedBase}-360.avif 360w, ${optimizedBase}-640.avif 640w, ${optimizedBase}-960.avif 960w`;
+    const webpSet = `${optimizedBase}-360.webp 360w, ${optimizedBase}-640.webp 640w, ${optimizedBase}-960.webp 960w`;
+    const fallbackOptimized = `${optimizedBase}-640.webp`;
+
+    return `
+        <picture>
+            <source type="image/avif" srcset="${avifSet}" sizes="${PRODUCT_IMAGE_SIZES}">
+            <source type="image/webp" srcset="${webpSet}" sizes="${PRODUCT_IMAGE_SIZES}">
+            <img
+                src="${fallbackOptimized}"
+                alt="${product.name}"
+                loading="lazy"
+                decoding="async"
+                width="1024"
+                height="1024"
+            >
+        </picture>
+    `;
 }
 
 function setContactSubmitInfo(message, type = 'neutral') {
@@ -383,20 +656,13 @@ function initContactFormSubmission() {
         setContactSubmitInfo('Enviando…', 'loading');
 
         try {
-            const csrfToken = await getCsrfToken();
-            if (!csrfToken) {
-                throw new Error('No se pudo validar el formulario');
-            }
-
             const payload = Object.fromEntries(formData.entries());
             const response = await fetch('/api/contact', {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
+                    'Content-Type': 'application/json'
                 },
-                credentials: 'include',
                 body: JSON.stringify(payload)
             });
 
@@ -415,15 +681,385 @@ function initContactFormSubmission() {
 
             const responseError = String(responsePayload?.error || '').trim();
 
-            setContactSubmitInfo(
-                responseError || 'Error al enviar. Intentá nuevamente.',
-                'error'
-            );
+            setContactSubmitInfo(responseError || 'Error al enviar. Intentá nuevamente.', 'error');
         } catch (error) {
             setContactSubmitInfo('Error al enviar. Intentá nuevamente.', 'error');
         } finally {
             isSubmitting = false;
             setContactSubmittingState(false);
+        }
+    });
+}
+
+const QUOTE_MAX_FILES_CLIENT = 6;
+const QUOTE_MAX_FILE_SIZE_BYTES_CLIENT = 5 * 1024 * 1024;
+const QUOTE_ALLOWED_MIME_TYPES_CLIENT = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf'
+]);
+const DEFAULT_QUOTE_FILES_HELP = `Podés adjuntar hasta ${QUOTE_MAX_FILES_CLIENT} archivos (JPG, PNG, WEBP o PDF de hasta 5 MB cada uno).`;
+let quoteSelectedFiles = [];
+
+function setQuoteSubmitInfo(message, type = 'neutral') {
+    const submitInfo = document.getElementById('quote-submit-info');
+    if (!submitInfo) return;
+
+    submitInfo.textContent = message;
+    submitInfo.classList.remove('is-success', 'is-error', 'is-loading');
+    if (type === 'success') submitInfo.classList.add('is-success');
+    if (type === 'error') submitInfo.classList.add('is-error');
+    if (type === 'loading') submitInfo.classList.add('is-loading');
+}
+
+function setQuoteSubmittingState(isSubmitting) {
+    const submitButton = document.getElementById('quote-submit-btn');
+    if (!submitButton) return;
+
+    submitButton.disabled = isSubmitting;
+    submitButton.textContent = isSubmitting ? 'Enviando...' : 'Enviar cotización';
+}
+
+function formatArPhoneMask(rawValue) {
+    const digits = String(rawValue || '').replace(/\D/g, '').slice(0, 13);
+    if (!digits) return '';
+
+    let normalized = digits;
+    if (normalized.startsWith('54')) normalized = normalized.slice(2);
+    if (normalized.startsWith('9')) normalized = normalized.slice(1);
+
+    const areaCode = normalized.slice(0, 2);
+    const firstBlock = normalized.slice(2, 6);
+    const secondBlock = normalized.slice(6, 10);
+
+    let formatted = '+54 9';
+    if (areaCode) formatted += ` ${areaCode}`;
+    if (firstBlock) formatted += ` ${firstBlock}`;
+    if (secondBlock) formatted += `-${secondBlock}`;
+    return formatted.trim();
+}
+
+function bindPhoneInputMask(input) {
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+        const start = input.selectionStart || 0;
+        input.value = formatArPhoneMask(input.value);
+        input.setSelectionRange(input.value.length, input.value.length);
+        if (start === 0) {
+            input.setSelectionRange(0, 0);
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        input.value = formatArPhoneMask(input.value);
+    });
+}
+
+function initPhoneInputMasks() {
+    document.querySelectorAll('input[data-inputmask="phone-ar"]').forEach(bindPhoneInputMask);
+}
+
+function validateQuoteFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length > QUOTE_MAX_FILES_CLIENT) {
+        return `Podés adjuntar hasta ${QUOTE_MAX_FILES_CLIENT} archivos.`;
+    }
+
+    for (const file of files) {
+        if (!QUOTE_ALLOWED_MIME_TYPES_CLIENT.has(String(file.type || '').toLowerCase())) {
+            return 'Formato no permitido. Adjuntá JPG, PNG, WEBP o PDF.';
+        }
+
+        if (Number(file.size || 0) > QUOTE_MAX_FILE_SIZE_BYTES_CLIENT) {
+            return 'Cada archivo puede pesar hasta 5 MB.';
+        }
+    }
+
+    return '';
+}
+
+function formatQuoteFileSize(fileSizeBytes) {
+    const size = Number(fileSizeBytes || 0);
+    if (size >= 1024 * 1024) {
+        return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    return `${Math.max(1, Math.round(size / 1024))} KB`;
+}
+
+function setQuoteFilesFeedback(message = '', type = 'neutral') {
+    const feedback = document.getElementById('quote-files-feedback');
+    if (!feedback) return;
+
+    feedback.textContent = message || DEFAULT_QUOTE_FILES_HELP;
+    feedback.classList.remove('is-error', 'is-success');
+    if (type === 'error') feedback.classList.add('is-error');
+    if (type === 'success') feedback.classList.add('is-success');
+}
+
+function renderQuoteSelectedFiles() {
+    const selectedFilesContainer = document.getElementById('quote-files-selected');
+    if (!selectedFilesContainer) return;
+
+    if (quoteSelectedFiles.length === 0) {
+        selectedFilesContainer.innerHTML = '';
+        setQuoteFilesFeedback(DEFAULT_QUOTE_FILES_HELP, 'neutral');
+        return;
+    }
+
+    selectedFilesContainer.innerHTML = quoteSelectedFiles.map((file, index) => `
+        <div class="quote-files-selected-item">
+            <span>${file.name} (${formatQuoteFileSize(file.size)})</span>
+            <button type="button" class="quote-file-remove" data-index="${index}" aria-label="Quitar archivo">&times;</button>
+        </div>
+    `).join('');
+
+    selectedFilesContainer.querySelectorAll('.quote-file-remove').forEach(removeButton => {
+        removeButton.addEventListener('click', () => {
+            const index = Number.parseInt(removeButton.dataset.index, 10);
+            if (!Number.isInteger(index) || index < 0 || index >= quoteSelectedFiles.length) {
+                return;
+            }
+
+            quoteSelectedFiles.splice(index, 1);
+            renderQuoteSelectedFiles();
+        });
+    });
+
+    setQuoteFilesFeedback(
+        `Archivos seleccionados: ${quoteSelectedFiles.length}/${QUOTE_MAX_FILES_CLIENT}.`,
+        'success'
+    );
+}
+
+function isSameQuoteFile(leftFile, rightFile) {
+    return (
+        String(leftFile?.name || '') === String(rightFile?.name || '')
+        && Number(leftFile?.size || 0) === Number(rightFile?.size || 0)
+        && Number(leftFile?.lastModified || 0) === Number(rightFile?.lastModified || 0)
+    );
+}
+
+function mergeQuoteFiles(nextFiles) {
+    const normalizedNewFiles = Array.from(nextFiles || []);
+    if (normalizedNewFiles.length === 0) {
+        return true;
+    }
+
+    const mergedFiles = [...quoteSelectedFiles];
+    for (const file of normalizedNewFiles) {
+        if (!file || typeof file !== 'object') {
+            continue;
+        }
+
+        const mimeType = String(file.type || '').toLowerCase();
+        if (!QUOTE_ALLOWED_MIME_TYPES_CLIENT.has(mimeType)) {
+            const message = `El archivo "${file.name}" no está permitido. Usá JPG, PNG, WEBP o PDF.`;
+            setQuoteFilesFeedback(message, 'error');
+            setQuoteSubmitInfo(message, 'error');
+            return false;
+        }
+
+        if (Number(file.size || 0) > QUOTE_MAX_FILE_SIZE_BYTES_CLIENT) {
+            const message = `El archivo "${file.name}" supera el límite de 5 MB.`;
+            setQuoteFilesFeedback(message, 'error');
+            setQuoteSubmitInfo(message, 'error');
+            return false;
+        }
+
+        const alreadyIncluded = mergedFiles.some(currentFile => isSameQuoteFile(currentFile, file));
+        if (!alreadyIncluded) {
+            mergedFiles.push(file);
+        }
+    }
+
+    if (mergedFiles.length > QUOTE_MAX_FILES_CLIENT) {
+        const message = `Podés adjuntar hasta ${QUOTE_MAX_FILES_CLIENT} archivos.`;
+        setQuoteFilesFeedback(message, 'error');
+        setQuoteSubmitInfo(message, 'error');
+        return false;
+    }
+
+    quoteSelectedFiles = mergedFiles;
+    renderQuoteSelectedFiles();
+    return true;
+}
+
+function bindQuoteFilesUi() {
+    const dropzone = document.getElementById('quote-dropzone');
+    const fileInput = document.getElementById('quote-photos');
+    const chooseFilesButton = document.getElementById('quote-files-trigger');
+
+    if (!dropzone || !fileInput || !chooseFilesButton) {
+        return;
+    }
+
+    const openFilePicker = () => {
+        fileInput.click();
+    };
+
+    chooseFilesButton.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openFilePicker();
+    });
+
+    dropzone.addEventListener('click', event => {
+        if (event.target === chooseFilesButton) {
+            return;
+        }
+
+        openFilePicker();
+    });
+
+    dropzone.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openFilePicker();
+        }
+    });
+
+    fileInput.addEventListener('change', () => {
+        mergeQuoteFiles(Array.from(fileInput.files || []));
+        fileInput.value = '';
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, event => {
+            event.preventDefault();
+            event.stopPropagation();
+            dropzone.classList.add('is-dragging');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, event => {
+            event.preventDefault();
+            event.stopPropagation();
+            dropzone.classList.remove('is-dragging');
+        });
+    });
+
+    dropzone.addEventListener('drop', event => {
+        const droppedFiles = Array.from(event.dataTransfer?.files || []);
+        mergeQuoteFiles(droppedFiles);
+    });
+
+    renderQuoteSelectedFiles();
+}
+
+function initQuoteFormSubmission() {
+    const quoteForm = document.getElementById('quote-form');
+    if (!quoteForm) return;
+
+    quoteSelectedFiles = [];
+    bindQuoteFilesUi();
+
+    let isSubmitting = false;
+    quoteForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (isSubmitting) return;
+
+        const readOnlyFormData = new FormData(quoteForm);
+        const fullName = String(readOnlyFormData.get('fullName') || '').trim();
+        const email = String(readOnlyFormData.get('email') || '').trim();
+        const phone = String(readOnlyFormData.get('phone') || '').trim();
+        const cityNeighborhood = String(readOnlyFormData.get('cityNeighborhood') || '').trim();
+        const province = String(readOnlyFormData.get('province') || '').trim();
+        const furnitureType = String(readOnlyFormData.get('furnitureType') || '').trim();
+        const approximateMeasures = String(readOnlyFormData.get('approximateMeasures') || '').trim();
+        const privacyAccepted = String(readOnlyFormData.get('privacyAccepted') || '').trim();
+        const filesError = validateQuoteFiles(quoteSelectedFiles);
+
+        if (fullName.length < 2) {
+            setQuoteSubmitInfo('Ingresá tu nombre completo.', 'error');
+            return;
+        }
+
+        if (!isValidEmailAddress(email)) {
+            setQuoteSubmitInfo('Ingresá un email válido.', 'error');
+            return;
+        }
+
+        if (phone.length < 8) {
+            setQuoteSubmitInfo('Ingresá un teléfono válido.', 'error');
+            return;
+        }
+
+        if (cityNeighborhood.length < 2) {
+            setQuoteSubmitInfo('Ingresá tu ciudad o barrio.', 'error');
+            return;
+        }
+
+        if (province.length < 2) {
+            setQuoteSubmitInfo('Ingresá tu provincia.', 'error');
+            return;
+        }
+
+        if (!furnitureType) {
+            setQuoteSubmitInfo('Seleccioná el tipo de mueble.', 'error');
+            return;
+        }
+
+        if (approximateMeasures.length < 5) {
+            setQuoteSubmitInfo('Completá las medidas aproximadas para cotizar.', 'error');
+            return;
+        }
+
+        if (!privacyAccepted) {
+            setQuoteSubmitInfo('Debés aceptar la Política de Privacidad.', 'error');
+            return;
+        }
+
+        if (filesError) {
+            setQuoteSubmitInfo(filesError, 'error');
+            setQuoteFilesFeedback(filesError, 'error');
+            return;
+        }
+
+        isSubmitting = true;
+        setQuoteSubmittingState(true);
+        setQuoteSubmitInfo('Enviando solicitud de cotización...', 'loading');
+        const payloadFormData = new FormData(quoteForm);
+        payloadFormData.delete('photos');
+        quoteSelectedFiles.forEach(file => {
+            payloadFormData.append('photos', file, file.name);
+        });
+
+        try {
+            const response = await fetch('/api/quotes', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json'
+                },
+                body: payloadFormData
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+
+            if (!response.ok || payload?.ok === false) {
+                throw new Error(payload.error || 'No pudimos enviar la solicitud de cotización.');
+            }
+
+            quoteForm.reset();
+            quoteSelectedFiles = [];
+            renderQuoteSelectedFiles();
+            setQuoteSubmitInfo(
+                payload.message || 'Solicitud enviada. Te vamos a contactar dentro de las próximas 24 horas hábiles.',
+                'success'
+            );
+        } catch (error) {
+            setQuoteSubmitInfo(error.message || 'No pudimos enviar la solicitud de cotización.', 'error');
+        } finally {
+            isSubmitting = false;
+            setQuoteSubmittingState(false);
         }
     });
 }
@@ -476,39 +1112,48 @@ function renderProducts() {
     const grid = document.getElementById('products-grid');
     if (!grid) return;
 
-    const visibleProducts = products.slice(0, visibleProductsCount);
+    const storeProducts = products.filter(product => product.action === 'cart');
+    const filteredProducts = activeCatalogFilter === 'all'
+        ? storeProducts
+        : storeProducts.filter(product => product.category === activeCatalogFilter);
+
+    const visibleProducts = filteredProducts.slice(0, visibleProductsCount);
+
+    const resultCounter = document.getElementById('catalogFilterResult');
+    if (resultCounter) {
+        const suffix = filteredProducts.length === 1 ? 'producto' : 'productos';
+        const selectedCategory = activeCatalogFilter === 'all' ? 'todas las categorías' : activeCatalogFilter;
+        resultCounter.textContent = `Mostrando ${filteredProducts.length} ${suffix} en ${selectedCategory}.`;
+    }
 
     grid.innerHTML = visibleProducts.map((product, index) => {
         const delay = (index % 6) * 0.1;
-
-        let buttonHtml = '';
-        let priceHtml = '';
-
-        if (product.action === 'cart') {
-            priceHtml = `<span class="product-price">$${product.price.toLocaleString('es-AR')}</span>`;
-            buttonHtml = `<button class="btn-add-cart js-add-cart" data-product-id="${product.id}">Agregar al Carrito</button>`;
-        } else {
-            priceHtml = `<span class="product-price" style="color: var(--color-text-muted);">Consultar Precio</span>`;
-            buttonHtml = `<button class="btn-add-cart js-open-quote" style="border-color: var(--color-text); color: var(--color-text);" data-product-id="${product.id}">Cotizar</button>`;
-        }
+        const isMadeToOrder = product.fulfillmentModel === 'made_to_order';
+        const stockLabel = isMadeToOrder
+            ? 'Fabricacion bajo pedido'
+            : `En stock - ${Number.parseInt(product.stock, 10) || 0} unidades`;
+        const shippingLabel = String(product.availabilityMessage || product.shippingEstimate || '').trim();
 
         return `
             <div class="product-card reveal" style="transition-delay: ${delay}s;">
                 <div class="product-image">
-                    <img src="${product.image}" alt="${product.name}" loading="lazy" decoding="async" width="1024" height="1024">
+                    ${buildResponsiveProductPicture(product)}
                 </div>
                 <div class="product-details">
                     <h4 class="product-name">${product.name}</h4>
                     <p class="product-specs">${product.specs}</p>
-                    ${priceHtml}
-                    ${buttonHtml}
+                    <p class="product-meta"><strong>Categoría:</strong> ${product.category}</p>
+                    <p class="product-meta"><strong>Disponibilidad:</strong> ${stockLabel}</p>
+                    <p class="product-meta"><strong>Logística:</strong> ${shippingLabel}</p>
+                    <span class="product-price">$${product.price.toLocaleString('es-AR')}</span>
+                    <button class="btn-add-cart js-add-cart" data-product-id="${product.id}">Agregar al carrito</button>
                 </div>
             </div>
         `;
     }).join('');
 
     bindCatalogActions(grid);
-    renderLoadMoreButton(grid);
+    renderLoadMoreButton(grid, filteredProducts.length);
 
     setTimeout(() => {
         grid.querySelectorAll('.reveal').forEach(observeRevealElement);
@@ -521,15 +1166,9 @@ function bindCatalogActions(grid) {
             addToCart(button.dataset.productId);
         });
     });
-
-    grid.querySelectorAll('.js-open-quote').forEach(button => {
-        button.addEventListener('click', () => {
-            openQuoteById(button.dataset.productId);
-        });
-    });
 }
 
-function renderLoadMoreButton(grid) {
+function renderLoadMoreButton(grid, totalProductsCount) {
     if (!grid?.parentElement) return;
 
     const previousWrapper = document.getElementById('catalog-load-more');
@@ -537,7 +1176,7 @@ function renderLoadMoreButton(grid) {
         previousWrapper.remove();
     }
 
-    if (visibleProductsCount >= products.length) {
+    if (visibleProductsCount >= totalProductsCount) {
         return;
     }
 
@@ -549,8 +1188,50 @@ function renderLoadMoreButton(grid) {
 
     const loadMoreButton = document.getElementById('loadMoreProductsBtn');
     loadMoreButton?.addEventListener('click', () => {
-        visibleProductsCount = Math.min(visibleProductsCount + 8, products.length);
+        visibleProductsCount = Math.min(visibleProductsCount + 8, totalProductsCount);
         renderProducts();
+    });
+}
+
+function initCatalogFilters() {
+    const filterButtons = document.querySelectorAll('.js-catalog-filter');
+    if (filterButtons.length === 0) {
+        return;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryFromQuery = String(urlParams.get('categoria') || '').trim();
+    if (categoryFromQuery) {
+        const normalizedCategory = categoryFromQuery.toLowerCase();
+        const matchingButton = Array.from(filterButtons).find(button => (
+            String(button.dataset.filter || '').toLowerCase() === normalizedCategory
+        ));
+
+        if (matchingButton) {
+            activeCatalogFilter = String(matchingButton.dataset.filter);
+        }
+    }
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const nextFilter = String(button.dataset.filter || 'all');
+            activeCatalogFilter = nextFilter;
+            visibleProductsCount = INITIAL_PRODUCTS_VISIBLE;
+
+            filterButtons.forEach(item => {
+                const isActive = item.dataset.filter === nextFilter;
+                item.classList.toggle('active', isActive);
+                item.setAttribute('aria-pressed', String(isActive));
+            });
+
+            renderProducts();
+        });
+    });
+
+    filterButtons.forEach(item => {
+        const isActive = item.dataset.filter === activeCatalogFilter;
+        item.classList.toggle('active', isActive);
+        item.setAttribute('aria-pressed', String(isActive));
     });
 }
 
@@ -594,13 +1275,20 @@ function bindCommonUiActions() {
 }
 
 function injectDeliveryPolicyPanel() {
-    const pathname = window.location.pathname.toLowerCase();
-    if (
-        pathname.includes('success')
-        || pathname.includes('failure')
-        || pathname.includes('pending')
-        || pathname.includes('404')
-    ) {
+    const pageKey = String(document.body?.dataset?.page || '').trim().toLowerCase();
+    const pathname = String(window.location.pathname || '').toLowerCase();
+    const isTiendaOrAMedida = (
+        pageKey === 'tienda'
+        || pageKey === 'amedida'
+        || pathname === '/tienda'
+        || pathname.startsWith('/tienda/')
+        || pathname === '/a-medida'
+        || pathname.endsWith('/tienda.html')
+        || pathname.endsWith('/a-medida.html')
+        || pathname.endsWith('/catalogo.html')
+    );
+
+    if (!isTiendaOrAMedida) {
         return;
     }
 
@@ -641,6 +1329,14 @@ function formatArs(amount) {
 
 const DELIVERY_METHOD_SHIPPING = 'shipping';
 const DELIVERY_METHOD_PICKUP = 'pickup';
+const PAYMENT_METHOD_MERCADOPAGO = 'mercadopago';
+const PAYMENT_METHOD_BANK_TRANSFER = 'bank_transfer';
+const PAYMENT_METHOD_CASH_PICKUP = 'cash_pickup';
+const PAYMENT_METHOD_LABELS = Object.freeze({
+    [PAYMENT_METHOD_MERCADOPAGO]: 'Mercado Pago',
+    [PAYMENT_METHOD_BANK_TRANSFER]: 'Transferencia bancaria',
+    [PAYMENT_METHOD_CASH_PICKUP]: 'Efectivo en retiro'
+});
 const DEFAULT_DELIVERY_CONFIG = Object.freeze({
     installationBaseCost: 200000,
     installationComplexNotice: 'Instalaciones complejas se cotizan aparte.',
@@ -666,7 +1362,9 @@ const deliveryState = {
     shippingLoading: false,
     shippingError: '',
     installationAvailable: false,
-    installationSelected: false
+    installationSelected: false,
+    paymentMethod: PAYMENT_METHOD_MERCADOPAGO,
+    buyerEmail: ''
 };
 
 function getDeliveryInputRefs() {
@@ -685,6 +1383,9 @@ function getDeliveryInputRefs() {
         configPanel: document.getElementById('delivery-config-panel'),
         configToggle: document.getElementById('delivery-config-toggle'),
         checkoutMessage: document.getElementById('delivery-checkout-message'),
+        paymentMethodSelect: document.getElementById('delivery-payment-method'),
+        buyerEmailInput: document.getElementById('delivery-buyer-email'),
+        paymentMethodNote: document.getElementById('delivery-payment-note'),
         subtotalValue: document.getElementById('cartSubtotal'),
         shippingValue: document.getElementById('cartShippingValue'),
         installationRow: document.getElementById('cartInstallationRow'),
@@ -761,33 +1462,27 @@ function setDeliveryPanelOpen(isOpen) {
 
 function getCheckoutValidation() {
     if (cart.length === 0) {
-        return { ok: false, message: 'El carrito está vacío.' };
+        return { ok: false, message: 'El carrito está vacío. Agregá al menos un producto para continuar.' };
     }
 
     if (deliveryState.method === DELIVERY_METHOD_PICKUP) {
         return { ok: true, message: '' };
     }
 
-    if (deliveryState.postalCode.length < 4) {
-        return { ok: false, message: 'Ingresá tu código postal para calcular el envío.' };
+    if (deliveryState.shippingLoading) {
+        return { ok: false, message: 'Estamos calculando tu envío. Esperá unos segundos.' };
     }
 
-    if (deliveryState.shippingLoading) {
-        return { ok: false, message: 'Calculando costo de envío...' };
+    if (deliveryState.postalCode.length < 4) {
+        return { ok: false, message: 'Ingresá el código postal o elegí retiro por fábrica para continuar.' };
+    }
+
+    if (deliveryState.shippingError) {
+        return { ok: false, message: deliveryState.shippingError };
     }
 
     if (!deliveryState.shippingReady) {
-        return {
-            ok: false,
-            message: deliveryState.shippingError || deliveryConfig.unsupportedPostalCodeMessage
-        };
-    }
-
-    if (deliveryState.installationSelected && !deliveryState.installationAvailable) {
-        return {
-            ok: false,
-            message: 'Instalación no disponible en tu zona. Podés continuar con envío sin instalación o retiro por fábrica.'
-        };
+        return { ok: false, message: 'Necesitamos validar el envío antes de continuar.' };
     }
 
     return { ok: true, message: '' };
@@ -857,6 +1552,41 @@ function updateDeliveryUi() {
         refs.postalCodeInput.value = deliveryState.postalCode;
     }
 
+    if (refs.paymentMethodSelect) {
+        const acceptedPaymentMethods = Array.isArray(storeConfig.acceptedPaymentMethods)
+            ? storeConfig.acceptedPaymentMethods
+            : DEFAULT_STORE_CONFIG.acceptedPaymentMethods;
+
+        Array.from(refs.paymentMethodSelect.options).forEach(option => {
+            const allowed = acceptedPaymentMethods.includes(option.value);
+            option.hidden = !allowed;
+            option.disabled = !allowed;
+        });
+
+        if (!acceptedPaymentMethods.includes(deliveryState.paymentMethod)) {
+            deliveryState.paymentMethod = acceptedPaymentMethods[0] || PAYMENT_METHOD_MERCADOPAGO;
+        }
+
+        if (refs.paymentMethodSelect.value !== deliveryState.paymentMethod) {
+            refs.paymentMethodSelect.value = deliveryState.paymentMethod;
+        }
+    }
+
+    if (refs.buyerEmailInput && refs.buyerEmailInput.value !== deliveryState.buyerEmail) {
+        refs.buyerEmailInput.value = deliveryState.buyerEmail;
+    }
+
+    if (refs.paymentMethodNote) {
+        const paymentLabel = PAYMENT_METHOD_LABELS[deliveryState.paymentMethod] || 'Medio de pago';
+        if (deliveryState.paymentMethod === PAYMENT_METHOD_BANK_TRANSFER) {
+            refs.paymentMethodNote.textContent = `${paymentLabel}: el pedido queda pendiente hasta confirmar acreditación.`;
+        } else if (deliveryState.paymentMethod === PAYMENT_METHOD_CASH_PICKUP) {
+            refs.paymentMethodNote.textContent = `${paymentLabel}: disponible solo para retiro en taller.`;
+        } else {
+            refs.paymentMethodNote.textContent = `${paymentLabel}: confirmación automática al acreditarse el pago.`;
+        }
+    }
+
     if (refs.installationWrap) {
         const shouldShowInstallation = deliveryState.method === DELIVERY_METHOD_SHIPPING
             && deliveryState.shippingReady
@@ -920,6 +1650,20 @@ function updateDeliveryUi() {
     });
 
     updateTotalsUi();
+
+    if (
+        deliveryState.method === DELIVERY_METHOD_SHIPPING
+        && deliveryState.postalCode.length === 4
+        && !deliveryState.shippingLoading
+    ) {
+        if (shippingQuoteDebounceId) {
+            clearTimeout(shippingQuoteDebounceId);
+        }
+
+        shippingQuoteDebounceId = setTimeout(() => {
+            requestShippingQuote(deliveryState.postalCode);
+        }, 250);
+    }
 }
 
 function resetShippingState() {
@@ -968,10 +1712,20 @@ async function requestShippingQuote(postalCode) {
     updateDeliveryUi();
 
     try {
-        const response = await fetch(`/api/delivery/quote?postalCode=${encodeURIComponent(postalCode)}`, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            credentials: 'include'
+        const items = cart.map(item => ({
+            id: item.id,
+            quantity: item.quantity
+        }));
+        const response = await fetch('/api/delivery/quote', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                postalCode,
+                items
+            })
         });
 
         const data = await response.json();
@@ -1013,6 +1767,18 @@ function bindDeliveryUiActions() {
         input.addEventListener('change', () => {
             deliveryState.method = input.value;
 
+            if (
+                deliveryState.method === DELIVERY_METHOD_SHIPPING
+                && deliveryState.paymentMethod === PAYMENT_METHOD_CASH_PICKUP
+            ) {
+                const acceptedPaymentMethods = Array.isArray(storeConfig.acceptedPaymentMethods)
+                    ? storeConfig.acceptedPaymentMethods
+                    : DEFAULT_STORE_CONFIG.acceptedPaymentMethods;
+                deliveryState.paymentMethod = acceptedPaymentMethods.includes(PAYMENT_METHOD_MERCADOPAGO)
+                    ? PAYMENT_METHOD_MERCADOPAGO
+                    : (acceptedPaymentMethods[0] || PAYMENT_METHOD_MERCADOPAGO);
+            }
+
             if (deliveryState.method === DELIVERY_METHOD_PICKUP) {
                 resetShippingState();
                 updateDeliveryUi();
@@ -1052,6 +1818,31 @@ function bindDeliveryUiActions() {
     refs.installationCheckbox?.addEventListener('change', () => {
         deliveryState.installationSelected = refs.installationCheckbox.checked;
         updateDeliveryUi();
+    });
+
+    refs.paymentMethodSelect?.addEventListener('change', () => {
+        const selected = String(refs.paymentMethodSelect.value || PAYMENT_METHOD_MERCADOPAGO);
+        const acceptedPaymentMethods = Array.isArray(storeConfig.acceptedPaymentMethods)
+            ? storeConfig.acceptedPaymentMethods
+            : DEFAULT_STORE_CONFIG.acceptedPaymentMethods;
+        deliveryState.paymentMethod = acceptedPaymentMethods.includes(selected)
+            ? selected
+            : PAYMENT_METHOD_MERCADOPAGO;
+
+        if (
+            deliveryState.paymentMethod === PAYMENT_METHOD_CASH_PICKUP
+            && deliveryState.method !== DELIVERY_METHOD_PICKUP
+        ) {
+            deliveryState.method = DELIVERY_METHOD_PICKUP;
+            resetShippingState();
+        }
+
+        updateDeliveryUi();
+    });
+
+    refs.buyerEmailInput?.addEventListener('input', () => {
+        deliveryState.buyerEmail = String(refs.buyerEmailInput.value || '').trim();
+        updateCheckoutButtonsState();
     });
 }
 
@@ -1103,6 +1894,17 @@ function ensureDeliveryCheckoutUi() {
                 <p id="delivery-installation-note" class="delivery-help-message"></p>
             </div>
             <p id="delivery-installation-unavailable" class="delivery-help-message is-error" hidden></p>
+            <div class="delivery-payment-box">
+                <label for="delivery-payment-method">Medio de pago</label>
+                <select id="delivery-payment-method" class="form-input">
+                    <option value="mercadopago">Mercado Pago</option>
+                    <option value="bank_transfer">Transferencia bancaria</option>
+                    <option value="cash_pickup">Efectivo en retiro</option>
+                </select>
+                <label for="delivery-buyer-email" style="margin-top: 0.65rem;">Email para confirmaciones</label>
+                <input id="delivery-buyer-email" class="form-input" type="email" inputmode="email" autocomplete="email" placeholder="tuemail@dominio.com">
+                <p id="delivery-payment-note" class="delivery-help-message"></p>
+            </div>
             <div class="cart-breakdown" id="cart-breakdown">
                 <div class="cart-breakdown-row">
                     <span>Subtotal</span>
@@ -1203,7 +2005,7 @@ function showAddedNotification(productName) {
     }
 
     const textElement = notification.querySelector('p');
-    textElement.textContent = `Has agregado ${productName} al carrito`;
+    textElement.textContent = `Agregaste ${productName} al carrito`;
 
     setTimeout(() => notification.classList.add('show'), 10);
     setTimeout(() => {
@@ -1234,6 +2036,7 @@ function updateQuantity(id, change) {
 }
 
 function updateCart() {
+    const cartWasOpen = Boolean(cartSidebar?.classList.contains('open'));
     cart = sanitizeCart(cart);
     persistCart(cart);
 
@@ -1280,12 +2083,15 @@ function updateCart() {
     }
 
     updateTotalsUi();
+
+    if (cartWasOpen) {
+        setCartOpenState(true);
+    }
 }
 
 async function checkout(currentEvent = null) {
     const checkoutValidation = getCheckoutValidation();
     if (!checkoutValidation.ok) {
-        setDeliveryPanelOpen(true);
         alert(checkoutValidation.message || 'Revisá los datos de entrega antes de continuar.');
         return;
     }
@@ -1308,62 +2114,11 @@ async function checkout(currentEvent = null) {
             checkoutButton.textContent = 'Procesando...';
         }
 
-        const items = cart.map(item => ({
-            id: item.id,
-            title: item.name,
-            quantity: item.quantity,
-            unit_price: item.price
-        }));
-
-        const csrfToken = await getCsrfToken();
-        if (!csrfToken) {
-            throw new Error('No se encontró token CSRF');
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
-        let response;
-        try {
-            response = await fetch('/api/mp/create-preference', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    items,
-                    delivery: buildDeliveryPayload()
-                }),
-                signal: controller.signal
-            });
-        } finally {
-            clearTimeout(timeoutId);
-        }
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Error al procesar el pago');
-        }
-
-        if (data.payment_mode === 'offline' && data.warning) {
-            alert(`${data.warning} Te llevaremos al formulario de datos para coordinar manualmente.`);
-        }
-
-        if (data.init_point) {
-            window.location.href = data.init_point;
-        } else {
-            throw new Error('No se recibió URL de pago');
-        }
+        window.location.href = '/datos-envio';
 
     } catch (error) {
         console.error('Error en checkout:', error);
-        if (error.name === 'AbortError') {
-            alert('La solicitud tardó demasiado. Intenta nuevamente.');
-        } else {
-            alert(error.message || 'Error al procesar el pago. Por favor, intenta nuevamente.');
-        }
+        alert(error.message || 'No pudimos continuar con el checkout.');
 
         if (checkoutButton) {
             checkoutButton.disabled = false;
@@ -1373,29 +2128,41 @@ async function checkout(currentEvent = null) {
 }
 
 // Initialize on Load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initThemeToggle();
     syncUiOverlayState();
+    initPhoneInputMasks();
+
+    await loadStoreCatalog();
+    initCatalogFilters();
     renderProducts();
     bindCommonUiActions();
     bindStaticAddToCartButtons();
     setupAccessibleTriggers();
     ensureDeliveryCheckoutUi();
     updateCart();
-    loadDeliveryOptions();
+    await loadDeliveryOptions();
+    updateDeliveryUi();
     injectDeliveryPolicyPanel();
 
     // Contact Form Pre-fill Logic
+    initContactFormSubmission();
+    initQuoteFormSubmission();
+
     const currentPath = String(window.location.pathname || '').toLowerCase();
     if (currentPath.includes('contacto')) {
         const urlParams = new URLSearchParams(window.location.search);
         const product = String(urlParams.get('producto') || '').slice(0, 120);
-        initContactFormSubmission();
         setContactSubmitInfo('Responderemos a la brevedad posible.');
 
         if (product) {
             const typeSelect = document.querySelector('select[name="type"]');
             const messageTextarea = document.querySelector('textarea[name="message"]');
+            const productReferenceInput = document.querySelector('input[name="productReference"]');
+
+            if (productReferenceInput) {
+                productReferenceInput.value = product;
+            }
 
             if (typeSelect) {
                 // Map product keywords to dropdown options
@@ -1428,17 +2195,115 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initHeroSlideshow() {
-    const slides = document.querySelectorAll('.hero-slide');
-    if (slides.length === 0) return;
+    const allSlides = Array.from(document.querySelectorAll('.hero-slide'));
+    if (allSlides.length === 0) return;
 
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const orientationQuery = window.matchMedia('(orientation: portrait)');
+    const slideInterval = 3000;
+    let activeSlides = [];
     let currentSlide = 0;
-    const slideInterval = 3000; // 3 seconds
+    let intervalId = null;
+    let activeMode = '';
+    let resizeDebounceId = null;
 
-    setInterval(() => {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (currentSlide + 1) % slides.length;
-        slides[currentSlide].classList.add('active');
-    }, slideInterval);
+    const getBackgroundForMode = (slide, useMobile) => {
+        const desktopBg = String(slide.dataset.bgDesktop || '').trim();
+        const mobileBg = String(slide.dataset.bgMobile || '').trim();
+        const legacyBg = String(slide.dataset.bg || '').trim();
+        if (useMobile) {
+            return mobileBg || legacyBg || desktopBg;
+        }
+        return desktopBg || legacyBg;
+    };
+
+    const applyBackground = (slide, useMobile) => {
+        const backgroundPath = getBackgroundForMode(slide, useMobile);
+        slide.classList.remove('active');
+
+        if (!backgroundPath) {
+            slide.hidden = true;
+            slide.style.backgroundImage = '';
+            return false;
+        }
+
+        slide.hidden = false;
+        slide.style.backgroundImage = `url('${backgroundPath}')`;
+        return true;
+    };
+
+    const shouldUseMobileSlides = () => {
+        const width = window.innerWidth || document.documentElement.clientWidth || 0;
+        const height = window.innerHeight || document.documentElement.clientHeight || 0;
+        const isPhoneViewport = width <= 900;
+        const isPortrait = height > width;
+        return isPhoneViewport && isPortrait;
+    };
+
+    const clearRotation = () => {
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+    };
+
+    const startRotation = () => {
+        clearRotation();
+        if (activeSlides.length < 2 || prefersReducedMotion.matches) {
+            return;
+        }
+
+        intervalId = setInterval(() => {
+            activeSlides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % activeSlides.length;
+            activeSlides[currentSlide].classList.add('active');
+        }, slideInterval);
+    };
+
+    const refreshSlides = () => {
+        const useMobileSlides = shouldUseMobileSlides();
+        const mode = useMobileSlides ? 'mobile' : 'desktop';
+        const shouldRebuild = mode !== activeMode || activeSlides.length === 0;
+        if (!shouldRebuild) {
+            return;
+        }
+
+        activeMode = mode;
+        activeSlides = allSlides.filter(slide => applyBackground(slide, useMobileSlides));
+        if (activeSlides.length === 0) {
+            return;
+        }
+
+        currentSlide = 0;
+        activeSlides[0].classList.add('active');
+        startRotation();
+    };
+
+    const queueRefreshSlides = () => {
+        if (resizeDebounceId) {
+            clearTimeout(resizeDebounceId);
+        }
+
+        resizeDebounceId = setTimeout(() => {
+            resizeDebounceId = null;
+            refreshSlides();
+        }, 120);
+    };
+
+    refreshSlides();
+
+    window.addEventListener('resize', queueRefreshSlides, { passive: true });
+    if (orientationQuery.addEventListener) {
+        orientationQuery.addEventListener('change', refreshSlides);
+    } else if (orientationQuery.addListener) {
+        orientationQuery.addListener(refreshSlides);
+    }
+
+    if (prefersReducedMotion.addEventListener) {
+        prefersReducedMotion.addEventListener('change', startRotation);
+    } else if (prefersReducedMotion.addListener) {
+        prefersReducedMotion.addListener(startRotation);
+    }
 }
 
 function closeNotification() {
@@ -1461,5 +2326,5 @@ function openQuoteById(productId) {
 
 function openQuote(productName) {
     const safeProductName = String(productName || '').slice(0, 120);
-    window.location.href = `contacto.html?producto=${encodeURIComponent(safeProductName)}`;
+    window.location.href = `/contacto?producto=${encodeURIComponent(safeProductName)}`;
 }

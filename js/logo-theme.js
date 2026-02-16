@@ -1,6 +1,6 @@
 (function logoThemeController() {
-    const LIGHT_LOGO = '/assets/favicon/apple-touch-icon.png?v=2';
-    const DARK_LOGO = '/assets/favicon/apple-touch-iconblanco.png?v=2';
+    const LIGHT_LOGO = '/assets/logo_negro.svg';
+    const DARK_LOGO = '/assets/logo_blanco.svg';
     const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     function isDarkTheme() {
@@ -35,9 +35,12 @@
 
     function applyDynamicLogo() {
         const useDarkLogo = isDarkTheme();
-        const nextSource = useDarkLogo ? DARK_LOGO : LIGHT_LOGO;
 
         document.querySelectorAll('img.logo-dinamico').forEach((logoImage) => {
+            const lightLogo = logoImage.dataset.logoLight || LIGHT_LOGO;
+            const darkLogo = logoImage.dataset.logoDark || DARK_LOGO;
+            const nextSource = useDarkLogo ? darkLogo : lightLogo;
+
             if (logoImage.getAttribute('src') !== nextSource) {
                 logoImage.setAttribute('src', nextSource);
             }

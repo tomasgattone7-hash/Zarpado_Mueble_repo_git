@@ -617,6 +617,148 @@
         "merchantOrderId": "",
         "paymentStatus": "pending"
       }
+    },
+    {
+      "orderId": "ZM-1771256471131-AE7A4F",
+      "externalReference": "ORDER_1771256471131_38A66B",
+      "createdAt": "2026-02-16T15:41:11.963Z",
+      "updatedAt": "2026-02-16T15:41:11.963Z",
+      "preferenceId": "3202898734-09dfb184-7698-43f4-90fc-14c5c0f5e126",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nórdico",
+          "description": "Vajillero Nórdico",
+          "quantity": 1,
+          "unit_price": 230000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 230000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 285000
+      },
+      "buyerEmail": "",
+      "customerData": null,
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-09dfb184-7698-43f4-90fc-14c5c0f5e126",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771256471131_38A66B"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-09dfb184-7698-43f4-90fc-14c5c0f5e126",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      }
+    },
+    {
+      "orderId": "ZM-1771266880298-A6E54E",
+      "externalReference": "ORDER_1771266880298_46C323",
+      "orderType": "tienda",
+      "createdAt": "2026-02-16T18:34:40.300Z",
+      "updatedAt": "2026-02-16T18:34:40.300Z",
+      "paymentMethod": "mercadopago",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "fulfillmentStatus": "pending_payment",
+      "estimatedLeadTime": "Pedido mixto: entrega estimada entre 10 y 20 días hábiles.",
+      "stockReserved": false,
+      "timeline": [
+        {
+          "status": "pending_payment",
+          "label": "Pendiente de pago",
+          "note": "Pedido registrado en Mercado Pago",
+          "at": "2026-02-16T18:34:41.113Z"
+        }
+      ],
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nordico",
+          "description": "Modulo de guardado para cocina/comedor",
+          "quantity": 1,
+          "unit_price": 230000,
+          "fulfillmentModel": "made_to_order",
+          "category": "Cocinas",
+          "weightKg": 52,
+          "volumeM3": 0.41
+        },
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "description": "Para TV 65\", cajones push-open",
+          "quantity": 1,
+          "unit_price": 210000,
+          "fulfillmentModel": "stock",
+          "category": "Living",
+          "weightKg": 42,
+          "volumeM3": 0.32
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior (hasta 260 kg)",
+        "shippingCost": 195000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0,
+        "shippingMeta": {
+          "freightTier": "hasta 260 kg",
+          "chargeableWeightKg": 182.5,
+          "totalWeightKg": 94,
+          "totalVolumeM3": 0.73
+        }
+      },
+      "totals": {
+        "subtotal": 440000,
+        "shipping": 195000,
+        "installation": 0,
+        "total": 635000
+      },
+      "buyerEmail": "tomasabalero@hotmail.com",
+      "customerData": null,
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-4f2725bd-0818-49c2-bc36-f6e817b9bab9",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771266880298_46C323"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-4f2725bd-0818-49c2-bc36-f6e817b9bab9",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      },
+      "preferenceId": "3202898734-4f2725bd-0818-49c2-bc36-f6e817b9bab9"
     }
   ]
 }

@@ -146,7 +146,7 @@ const corsOptions = {
     },
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token'],
-    credentials: true,
+    credentials: false,
     optionsSuccessStatus: 204
 };
 
@@ -224,29 +224,6 @@ function hasAllowedOrigin(request) {
     return isAllowedOrigin(request.get('origin'));
 }
 
-function validateCsrf(request, response, next) {
-    if (!hasAllowedOrigin(request)) {
-        if (!isProduction) {
-            console.warn(`[CORS] CSRF bloqueado por origin inválido: ${request.get('origin') || 'null'}`);
-        }
-        return response.status(403).json({ error: 'Origen no permitido' });
-    }
-
-    const sessionId = getCookieValue(request, CSRF_SESSION_COOKIE_NAME);
-    const expectedToken = sessionId ? csrfSessions.get(sessionId) : null;
-    const headerToken = request.get('x-csrf-token');
-    const bodyToken = typeof request.body?.csrf_token === 'string'
-        ? request.body.csrf_token
-        : null;
-    const providedToken = String(headerToken || bodyToken || '').trim();
-
-    if (!sessionId || !expectedToken || !providedToken || expectedToken !== providedToken) {
-        return response.status(403).json({ error: 'Token CSRF inválido o ausente' });
-    }
-
-    return next();
-}
-
 app.use((request, response, next) => {
     const { csrfToken } = getOrCreateCsrfSession(request, response);
     response.locals.csrfToken = csrfToken;
@@ -259,16 +236,18 @@ const apiLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: {
+        ok: false,
         error: 'Demasiadas solicitudes. Intentá nuevamente en unos minutos.'
     }
 });
 
 const checkoutLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
-    max: Number.parseInt(process.env.CHECKOUT_RATE_LIMIT_MAX, 10) || 25,
+    max: Number.parseInt(process.env.CHECKOUT_RATE_LIMIT_MAX, 10) || 30,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
+        ok: false,
         error: 'Demasiados intentos de checkout. Esperá unos minutos.'
     }
 });
@@ -276,12 +255,12 @@ const checkoutLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 app.get('/api/csrf-token', (request, response) => {
     if (!hasAllowedOrigin(request)) {
-        return response.status(403).json({ error: 'Origen no permitido' });
+        return response.status(403).json({ ok: false, error: 'Origen no permitido' });
     }
 
-    return response.json({ csrfToken: response.locals.csrfToken });
+    return response.json({ ok: true, csrfToken: response.locals.csrfToken });
 });
-app.use('/api/mp/create-preference', checkoutLimiter, validateCsrf);
+app.use('/api/mp/create-preference', checkoutLimiter);
 
 if (!process.env.MP_ACCESS_TOKEN) {
     console.error('❌ ERROR CRÍTICO: MP_ACCESS_TOKEN no está configurado en .env');
@@ -396,32 +375,39 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
 });
 
 app.get('/api/health', (req, res) => {
-    res.json({ ok: true });
+    res.json({
+        ok: true,
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.get('/health', (req, res) => {
-    res.json({ ok: true });
+    res.json({
+        ok: true,
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.use('/api', (req, res) => {
-    res.status(404).json({ error: 'Endpoint no encontrado' });
+    res.status(404).json({ ok: false, error: 'Endpoint no encontrado' });
 });
 
 app.use((error, req, res, _next) => {
     if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
-        return res.status(400).json({ error: 'JSON inválido en el request body' });
+        return res.status(400).json({ ok: false, error: 'JSON inválido en el request body' });
     }
 
     if (error.name === 'AbortError') {
-        return res.status(504).json({ error: 'Timeout al comunicarse con Mercado Pago' });
+        return res.status(504).json({ ok: false, error: 'Timeout al comunicarse con Mercado Pago' });
     }
 
     if (error.message === 'Origen no permitido por CORS') {
-        return res.status(403).json({ error: 'Origen no permitido' });
+        return res.status(403).json({ ok: false, error: 'Origen no permitido' });
     }
 
     const status = error.status || 500;
     const payload = {
+        ok: false,
         error: status === 500
             ? 'Error interno del servidor'
             : error.message
