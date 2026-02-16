@@ -34,6 +34,52 @@ const THEME_STORAGE_KEY = 'zm_theme';
 const LIGHT_THEME = 'light';
 const DARK_THEME = 'dark';
 const THEME_MEDIA_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
+const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const LOCAL_API_BASE_URL = 'http://localhost:3000';
+
+function resolveApiBaseUrl() {
+    if (typeof window === 'undefined' || !window.location) {
+        return PROD_API_BASE_URL;
+    }
+
+    const hostname = String(window.location.hostname || '').toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+        return LOCAL_API_BASE_URL;
+    }
+
+    return PROD_API_BASE_URL;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+const RECAPTCHA_CONFIG_ENDPOINT = '/forms/config';
+const RECAPTCHA_ACTIONS = Object.freeze({
+    contacto: 'contacto_submit',
+    envios: 'envios_submit'
+});
+let recaptchaClientConfigPromise = null;
+let recaptchaScriptLoadPromise = null;
+
+function buildApiUrl(path) {
+    const normalizedPath = String(path || '').trim();
+    if (!normalizedPath) {
+        return API_BASE_URL;
+    }
+
+    if (/^https?:\/\//i.test(normalizedPath)) {
+        return normalizedPath;
+    }
+
+    const pathWithSlash = normalizedPath.startsWith('/')
+        ? normalizedPath
+        : `/${normalizedPath}`;
+
+    return `${API_BASE_URL}${pathWithSlash}`;
+}
+
+if (typeof window !== 'undefined') {
+    window.ZM_API_BASE_URL = API_BASE_URL;
+    window.zmBuildApiUrl = buildApiUrl;
+}
 
 function getStoredTheme() {
     try {
@@ -518,7 +564,7 @@ function normalizeStoreProductFromApi(product) {
 
 async function loadStoreConfig() {
     try {
-        const response = await fetch('/api/store/config', {
+        const response = await fetch(buildApiUrl('/api/store/config'), {
             method: 'GET',
             headers: { Accept: 'application/json' }
         });
@@ -554,7 +600,7 @@ async function loadStoreConfig() {
 async function loadStoreCatalog() {
     try {
         await loadStoreConfig();
-        const response = await fetch('/api/store/catalog', {
+        const response = await fetch(buildApiUrl('/api/store/catalog'), {
             method: 'GET',
             headers: { Accept: 'application/json' }
         });
@@ -630,6 +676,102 @@ function buildResponsiveProductPicture(product) {
     `;
 }
 
+function normalizeRecaptchaVersion(version) {
+    return String(version || '').trim().toLowerCase() === 'v2' ? 'v2' : 'v3';
+}
+
+async function getRecaptchaClientConfig() {
+    if (!recaptchaClientConfigPromise) {
+        recaptchaClientConfigPromise = (async () => {
+            const response = await fetch(buildApiUrl(RECAPTCHA_CONFIG_ENDPOINT), {
+                method: 'GET',
+                headers: { Accept: 'application/json' }
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+
+            if (!response.ok || payload?.ok === false) {
+                throw new Error('No pudimos inicializar la validación anti-spam.');
+            }
+
+            const siteKey = String(payload?.siteKey || '').trim();
+            const enabled = Boolean(payload?.enabled) && Boolean(siteKey);
+            if (!enabled) {
+                throw new Error('El formulario no está habilitado todavía. Falta configurar reCAPTCHA en el servidor.');
+            }
+
+            return {
+                version: normalizeRecaptchaVersion(payload?.version),
+                siteKey
+            };
+        })();
+    }
+
+    return recaptchaClientConfigPromise;
+}
+
+async function ensureRecaptchaScriptLoaded() {
+    const config = await getRecaptchaClientConfig();
+    if (config.version !== 'v3') {
+        throw new Error('Versión de reCAPTCHA no soportada en este formulario.');
+    }
+
+    if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
+        return config;
+    }
+
+    if (!recaptchaScriptLoadPromise) {
+        recaptchaScriptLoadPromise = new Promise((resolve, reject) => {
+            const existingScript = document.querySelector('script[data-recaptcha="v3"]');
+            if (existingScript) {
+                existingScript.addEventListener('load', () => resolve(), { once: true });
+                existingScript.addEventListener('error', () => reject(new Error('No pudimos cargar reCAPTCHA.')), { once: true });
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(config.siteKey)}`;
+            script.async = true;
+            script.defer = true;
+            script.dataset.recaptcha = 'v3';
+            script.addEventListener('load', () => resolve(), { once: true });
+            script.addEventListener('error', () => reject(new Error('No pudimos cargar reCAPTCHA.')), { once: true });
+            document.head.appendChild(script);
+        });
+    }
+
+    await recaptchaScriptLoadPromise;
+    return config;
+}
+
+async function getRecaptchaToken(action) {
+    const config = await ensureRecaptchaScriptLoaded();
+    if (!window.grecaptcha || typeof window.grecaptcha.execute !== 'function') {
+        throw new Error('reCAPTCHA no está disponible en este navegador.');
+    }
+
+    return new Promise((resolve, reject) => {
+        window.grecaptcha.ready(async () => {
+            try {
+                const token = await window.grecaptcha.execute(config.siteKey, { action });
+                if (!token) {
+                    reject(new Error('No pudimos validar la protección anti-spam.'));
+                    return;
+                }
+
+                resolve(token);
+            } catch (error) {
+                reject(new Error('No pudimos validar la protección anti-spam.'));
+            }
+        });
+    });
+}
+
 function setContactSubmitInfo(message, type = 'neutral') {
     const submitInfo = document.getElementById('contact-submit-info');
     if (!submitInfo) return;
@@ -678,11 +820,15 @@ function initContactFormSubmission() {
 
         isSubmitting = true;
         setContactSubmittingState(true);
-        setContactSubmitInfo('Enviando…', 'loading');
+        setContactSubmitInfo('Validando protección anti-spam…', 'loading');
 
         try {
+            const recaptchaToken = await getRecaptchaToken(RECAPTCHA_ACTIONS.contacto);
             const payload = Object.fromEntries(formData.entries());
-            const response = await fetch('/api/contact', {
+            payload.recaptchaToken = recaptchaToken;
+
+            setContactSubmitInfo('Enviando…', 'loading');
+            const response = await fetch(buildApiUrl('/forms/contacto'), {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
@@ -704,11 +850,23 @@ function initContactFormSubmission() {
                 return;
             }
 
-            const responseError = String(responsePayload?.error || '').trim();
+            const responseError = String(responsePayload?.error || '').trim().toLowerCase();
+            if (responseError === 'recaptcha_failed') {
+                setContactSubmitInfo('No pudimos validar el reCAPTCHA. Intentá nuevamente.', 'error');
+                return;
+            }
 
-            setContactSubmitInfo(responseError || 'Error al enviar. Intentá nuevamente.', 'error');
+            if (responseError === 'recaptcha_not_configured') {
+                setContactSubmitInfo('El formulario no está habilitado todavía. Falta configurar reCAPTCHA.', 'error');
+                return;
+            }
+
+            setContactSubmitInfo(
+                String(responsePayload?.error || '').trim() || 'Error al enviar. Intentá nuevamente.',
+                'error'
+            );
         } catch (error) {
-            setContactSubmitInfo('Error al enviar. Intentá nuevamente.', 'error');
+            setContactSubmitInfo(error.message || 'Error al enviar. Intentá nuevamente.', 'error');
         } finally {
             isSubmitting = false;
             setContactSubmittingState(false);
@@ -1046,15 +1204,19 @@ function initQuoteFormSubmission() {
 
         isSubmitting = true;
         setQuoteSubmittingState(true);
-        setQuoteSubmitInfo('Enviando solicitud de cotización...', 'loading');
-        const payloadFormData = new FormData(quoteForm);
-        payloadFormData.delete('photos');
-        quoteSelectedFiles.forEach(file => {
-            payloadFormData.append('photos', file, file.name);
-        });
+        setQuoteSubmitInfo('Validando protección anti-spam...', 'loading');
 
         try {
-            const response = await fetch('/api/quotes', {
+            const recaptchaToken = await getRecaptchaToken(RECAPTCHA_ACTIONS.envios);
+            const payloadFormData = new FormData(quoteForm);
+            payloadFormData.delete('photos');
+            quoteSelectedFiles.forEach(file => {
+                payloadFormData.append('photos', file, file.name);
+            });
+            payloadFormData.set('recaptchaToken', recaptchaToken);
+
+            setQuoteSubmitInfo('Enviando solicitud de cotización...', 'loading');
+            const response = await fetch(buildApiUrl('/forms/envios'), {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json'
@@ -1070,6 +1232,15 @@ function initQuoteFormSubmission() {
             }
 
             if (!response.ok || payload?.ok === false) {
+                const responseError = String(payload?.error || '').trim().toLowerCase();
+                if (responseError === 'recaptcha_failed') {
+                    throw new Error('No pudimos validar el reCAPTCHA. Intentá nuevamente.');
+                }
+
+                if (responseError === 'recaptcha_not_configured') {
+                    throw new Error('El formulario no está habilitado todavía. Falta configurar reCAPTCHA.');
+                }
+
                 throw new Error(payload.error || 'No pudimos enviar la solicitud de cotización.');
             }
 
@@ -1377,6 +1548,8 @@ const cartTotalElement = document.getElementById('cartTotal');
 const cartCountElement = document.querySelector('.cart-count');
 let deliveryConfig = { ...DEFAULT_DELIVERY_CONFIG };
 let shippingQuoteDebounceId = null;
+let lastShippingQuoteKey = '';
+let shippingQuoteRequestSequence = 0;
 let deliveryPanelOpen = false;
 const deliveryState = {
     method: DELIVERY_METHOD_SHIPPING,
@@ -1391,6 +1564,17 @@ const deliveryState = {
     paymentMethod: PAYMENT_METHOD_MERCADOPAGO,
     buyerEmail: ''
 };
+
+function buildShippingQuoteKey(postalCode = deliveryState.postalCode) {
+    const normalizedPostalCode = String(postalCode || '').trim();
+    const cartSignature = cart
+        .map(item => `${Number.parseInt(item.id, 10)}:${Number.parseInt(item.quantity, 10)}`)
+        .filter(Boolean)
+        .sort()
+        .join('|');
+
+    return `${normalizedPostalCode}::${cartSignature}`;
+}
 
 function getDeliveryInputRefs() {
     return {
@@ -1676,16 +1860,24 @@ function updateDeliveryUi() {
 
     updateTotalsUi();
 
-    if (
+    const quoteKey = buildShippingQuoteKey();
+    const shouldRequestShippingQuote = (
         deliveryState.method === DELIVERY_METHOD_SHIPPING
         && deliveryState.postalCode.length === 4
         && !deliveryState.shippingLoading
+        && !deliveryState.shippingError
+        && (!deliveryState.shippingReady || lastShippingQuoteKey !== quoteKey)
+    );
+
+    if (
+        shouldRequestShippingQuote
     ) {
         if (shippingQuoteDebounceId) {
             clearTimeout(shippingQuoteDebounceId);
         }
 
         shippingQuoteDebounceId = setTimeout(() => {
+            shippingQuoteDebounceId = null;
             requestShippingQuote(deliveryState.postalCode);
         }, 250);
     }
@@ -1699,11 +1891,12 @@ function resetShippingState() {
     deliveryState.shippingError = '';
     deliveryState.installationAvailable = false;
     deliveryState.installationSelected = false;
+    lastShippingQuoteKey = '';
 }
 
 async function loadDeliveryOptions() {
     try {
-        const response = await fetch('/api/delivery/options', {
+        const response = await fetch(buildApiUrl('/api/delivery/options'), {
             method: 'GET',
             headers: { Accept: 'application/json' },
             credentials: 'include'
@@ -1730,6 +1923,10 @@ async function loadDeliveryOptions() {
 }
 
 async function requestShippingQuote(postalCode) {
+    const normalizedPostalCode = String(postalCode || '').trim();
+    const quoteKey = buildShippingQuoteKey(normalizedPostalCode);
+    const requestSequence = ++shippingQuoteRequestSequence;
+
     deliveryState.shippingLoading = true;
     deliveryState.shippingError = '';
     deliveryState.shippingReady = false;
@@ -1741,7 +1938,7 @@ async function requestShippingQuote(postalCode) {
             id: item.id,
             quantity: item.quantity
         }));
-        const response = await fetch('/api/delivery/quote', {
+        const response = await fetch(buildApiUrl('/api/delivery/quote'), {
             method: 'POST',
             headers: {
                 Accept: 'application/json',
@@ -1754,6 +1951,10 @@ async function requestShippingQuote(postalCode) {
         });
 
         const data = await response.json();
+        if (requestSequence !== shippingQuoteRequestSequence) {
+            return;
+        }
+
         if (!response.ok) {
             deliveryState.shippingError = String(data.error || deliveryConfig.unsupportedPostalCodeMessage);
             deliveryState.shippingCost = 0;
@@ -1768,14 +1969,23 @@ async function requestShippingQuote(postalCode) {
         deliveryState.shippingReady = true;
         deliveryState.shippingError = '';
         deliveryState.installationAvailable = Boolean(data.installationAvailable);
+        lastShippingQuoteKey = quoteKey;
         deliveryConfig.installationBaseCost = Number.parseInt(data.installationBaseCost, 10) || deliveryConfig.installationBaseCost;
         deliveryConfig.installationComplexNotice = String(
             data.installationComplexNotice || deliveryConfig.installationComplexNotice
         );
     } catch (error) {
+        if (requestSequence !== shippingQuoteRequestSequence) {
+            return;
+        }
+
         deliveryState.shippingError = 'No pudimos calcular el envío en este momento. Intentá nuevamente.';
         deliveryState.shippingReady = false;
     } finally {
+        if (requestSequence !== shippingQuoteRequestSequence) {
+            return;
+        }
+
         deliveryState.shippingLoading = false;
         updateDeliveryUi();
     }
@@ -1836,6 +2046,7 @@ function bindDeliveryUiActions() {
         }
 
         shippingQuoteDebounceId = setTimeout(() => {
+            shippingQuoteDebounceId = null;
             requestShippingQuote(normalizedPostalCode);
         }, 350);
     });
@@ -2108,6 +2319,14 @@ function updateCart() {
     }
 
     updateTotalsUi();
+
+    if (
+        deliveryState.method === DELIVERY_METHOD_SHIPPING
+        && deliveryState.postalCode.length === 4
+        && !deliveryState.shippingLoading
+    ) {
+        updateDeliveryUi();
+    }
 
     if (cartWasOpen) {
         setCartOpenState(true);

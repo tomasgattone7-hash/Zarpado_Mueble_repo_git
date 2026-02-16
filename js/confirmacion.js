@@ -3,6 +3,47 @@ const CART_STORAGE_KEY = 'zarpadoCart';
 const PHONE_PATTERN = /^[0-9+()\-\s]{6,40}$/;
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const POSTAL_CODE_PATTERN = /^\d{4}$/;
+const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const LOCAL_API_BASE_URL = 'http://localhost:3000';
+
+function resolveApiBaseUrl() {
+    if (typeof window === 'undefined' || !window.location) {
+        return PROD_API_BASE_URL;
+    }
+
+    if (typeof window.ZM_API_BASE_URL === 'string' && window.ZM_API_BASE_URL.trim()) {
+        return window.ZM_API_BASE_URL.trim();
+    }
+
+    const hostname = String(window.location.hostname || '').toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+        return LOCAL_API_BASE_URL;
+    }
+
+    return PROD_API_BASE_URL;
+}
+
+function buildApiUrl(path) {
+    if (typeof window !== 'undefined' && typeof window.zmBuildApiUrl === 'function') {
+        return window.zmBuildApiUrl(path);
+    }
+
+    const baseUrl = resolveApiBaseUrl();
+    const normalizedPath = String(path || '').trim();
+    if (!normalizedPath) {
+        return baseUrl;
+    }
+
+    if (/^https?:\/\//i.test(normalizedPath)) {
+        return normalizedPath;
+    }
+
+    const pathWithSlash = normalizedPath.startsWith('/')
+        ? normalizedPath
+        : `/${normalizedPath}`;
+
+    return `${baseUrl}${pathWithSlash}`;
+}
 
 const confirmState = {
     cart: [],
@@ -218,7 +259,7 @@ function renderShippingLabel(labelText) {
 }
 
 async function requestShippingQuote(postalCode, items) {
-    const quoteResponse = await fetch('/api/delivery/quote', {
+    const quoteResponse = await fetch(buildApiUrl('/api/delivery/quote'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -330,7 +371,7 @@ async function handleConfirmAndPay() {
     setConfirmFeedback('Creando orden de pago segura...', 'loading');
 
     try {
-        const response = await fetch('/api/mp/create-preference', {
+        const response = await fetch(buildApiUrl('/api/mp/create-preference'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

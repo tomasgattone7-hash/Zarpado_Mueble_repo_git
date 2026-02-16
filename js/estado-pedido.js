@@ -1,3 +1,45 @@
+const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const LOCAL_API_BASE_URL = 'http://localhost:3000';
+
+function resolveApiBaseUrl() {
+    if (typeof window === 'undefined' || !window.location) {
+        return PROD_API_BASE_URL;
+    }
+
+    if (typeof window.ZM_API_BASE_URL === 'string' && window.ZM_API_BASE_URL.trim()) {
+        return window.ZM_API_BASE_URL.trim();
+    }
+
+    const hostname = String(window.location.hostname || '').toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+        return LOCAL_API_BASE_URL;
+    }
+
+    return PROD_API_BASE_URL;
+}
+
+function buildApiUrl(path) {
+    if (typeof window !== 'undefined' && typeof window.zmBuildApiUrl === 'function') {
+        return window.zmBuildApiUrl(path);
+    }
+
+    const baseUrl = resolveApiBaseUrl();
+    const normalizedPath = String(path || '').trim();
+    if (!normalizedPath) {
+        return baseUrl;
+    }
+
+    if (/^https?:\/\//i.test(normalizedPath)) {
+        return normalizedPath;
+    }
+
+    const pathWithSlash = normalizedPath.startsWith('/')
+        ? normalizedPath
+        : `/${normalizedPath}`;
+
+    return `${baseUrl}${pathWithSlash}`;
+}
+
 function formatStatusCurrency(value) {
     return `$${Number(value || 0).toLocaleString('es-AR')}`;
 }
@@ -70,7 +112,7 @@ function renderOrderStatus(payload) {
 }
 
 async function fetchOrderStatus(orderRef) {
-    const response = await fetch(`/api/orders/${encodeURIComponent(orderRef)}`, {
+    const response = await fetch(buildApiUrl(`/api/orders/${encodeURIComponent(orderRef)}`), {
         method: 'GET',
         headers: { Accept: 'application/json' }
     });

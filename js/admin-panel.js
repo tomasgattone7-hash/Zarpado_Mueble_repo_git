@@ -1,4 +1,45 @@
 const ADMIN_TOKEN_STORAGE_KEY = 'zm_admin_panel_token';
+const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const LOCAL_API_BASE_URL = 'http://localhost:3000';
+
+function resolveAdminApiBaseUrl() {
+    if (typeof window === 'undefined' || !window.location) {
+        return PROD_API_BASE_URL;
+    }
+
+    if (typeof window.ZM_API_BASE_URL === 'string' && window.ZM_API_BASE_URL.trim()) {
+        return window.ZM_API_BASE_URL.trim();
+    }
+
+    const hostname = String(window.location.hostname || '').toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+        return LOCAL_API_BASE_URL;
+    }
+
+    return PROD_API_BASE_URL;
+}
+
+function buildAdminApiUrl(path) {
+    if (typeof window !== 'undefined' && typeof window.zmBuildApiUrl === 'function') {
+        return window.zmBuildApiUrl(path);
+    }
+
+    const baseUrl = resolveAdminApiBaseUrl();
+    const normalizedPath = String(path || '').trim();
+    if (!normalizedPath) {
+        return baseUrl;
+    }
+
+    if (/^https?:\/\//i.test(normalizedPath)) {
+        return normalizedPath;
+    }
+
+    const pathWithSlash = normalizedPath.startsWith('/')
+        ? normalizedPath
+        : `/${normalizedPath}`;
+
+    return `${baseUrl}${pathWithSlash}`;
+}
 
 function formatAdminCurrency(value) {
     return `$${Number(value || 0).toLocaleString('es-AR')}`;
@@ -57,7 +98,7 @@ async function adminFetch(path, options = {}) {
         'X-Admin-Token': token
     };
 
-    const response = await fetch(path, {
+    const response = await fetch(buildAdminApiUrl(path), {
         method: options.method || 'GET',
         headers,
         body: options.body || null
@@ -281,7 +322,7 @@ function bindAdminActions() {
             setAdminFeedback('Ingresá el token para exportar.', 'error');
             return;
         }
-        window.open(`/api/admin/export?type=orders&format=csv&token=${encodeURIComponent(token)}`, '_blank', 'noopener');
+        window.open(buildAdminApiUrl(`/api/admin/export?type=orders&format=csv&token=${encodeURIComponent(token)}`), '_blank', 'noopener');
     });
 
     document.getElementById('admin-export-all')?.addEventListener('click', () => {
@@ -290,7 +331,7 @@ function bindAdminActions() {
             setAdminFeedback('Ingresá el token para exportar.', 'error');
             return;
         }
-        window.open(`/api/admin/export?type=all&format=csv&token=${encodeURIComponent(token)}`, '_blank', 'noopener');
+        window.open(buildAdminApiUrl(`/api/admin/export?type=all&format=csv&token=${encodeURIComponent(token)}`), '_blank', 'noopener');
     });
 
     document.addEventListener('click', async (event) => {
