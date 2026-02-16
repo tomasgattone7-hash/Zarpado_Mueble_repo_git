@@ -88,3 +88,63 @@ En `script.js`:
 - Tienda enfocada en reducir fricción: información de stock/envío visible en tarjeta.
 - A Medida enfocada en valor percibido: proceso + galería + cotización asistida.
 - Tono de comunicación unificado en voseo argentino.
+
+## Formularios: AJAX + reCAPTCHA + Relay Backend
+
+### Flujo implementado
+- Frontend (Netlify) envía por AJAX a `https://api.zarpadomueble.com/forms/...`.
+- Backend (Railway) valida payload, aplica rate limit por IP y verifica reCAPTCHA con Google.
+- Si reCAPTCHA es válido, backend reenvía server-to-server a Formspree.
+- El frontend nunca envía directo a Formspree.
+
+### Endpoints
+- `GET /forms/config`: entrega configuración pública de reCAPTCHA (`siteKey`, `version`).
+- `POST /forms/contacto`: formulario de contacto.
+- `POST /forms/envios`: formulario de cotización A Medida.
+
+### Variables de entorno requeridas (Railway)
+Definilas en el servicio backend:
+
+```bash
+RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET=
+RECAPTCHA_VERSION=v3
+RECAPTCHA_MIN_SCORE=0.5
+
+FORMSPREE_CONTACT_ID=
+FORMSPREE_ENVIO_ID=
+
+FRONTEND_URL=https://zarpadomueble.com
+API_URL=https://api.zarpadomueble.com
+```
+
+Opcionales:
+
+```bash
+FORMS_RATE_LIMIT_MAX=10
+RECAPTCHA_VERIFY_TIMEOUT_MS=8000
+```
+
+### Dónde obtener cada valor
+- `FORMSPREE_CONTACT_ID` / `FORMSPREE_ENVIO_ID`:
+  - En Formspree, abrí cada form y copiá el ID de la ruta `f/xxxxxx`.
+  - Si tenés un `action` histórico tipo `https://formspree.io/f/xqedeven`, el ID es `xqedeven`.
+- `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET`:
+  - Google reCAPTCHA Admin Console.
+  - Registrar dominio `zarpadomueble.com` y `www.zarpadomueble.com`.
+  - Para local, agregar `localhost`.
+
+### Netlify
+- No requiere secret de reCAPTCHA.
+- Si usás despliegues preview en `*.netlify.app`, asegurate de incluirlos en la consola de reCAPTCHA para pruebas.
+
+### Prueba rápida local
+Con backend levantado en `localhost:3000`:
+
+```bash
+curl -i -X POST http://localhost:3000/forms/contacto \
+  -H "Content-Type: application/json" \
+  -d '{"name":"t","email":"t@t.com","message":"mensaje de prueba","recaptchaToken":"TEST"}'
+```
+
+Esperado con token inválido: `400` y `{ "ok": false, "error": "recaptcha_failed" }`.

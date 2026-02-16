@@ -16,10 +16,26 @@ require('dotenv').config();
 const app = express();
 const PORT = Number.parseInt(process.env.PORT, 10) || 3000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://zarpadomueble.com';
+const API_URL = process.env.API_URL || 'https://api.zarpadomueble.com';
 const isProduction = process.env.NODE_ENV === 'production';
 const forceHttps = process.env.FORCE_HTTPS === 'true' || isProduction;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
-const CONTACT_FORM_ENDPOINT = process.env.CONTACT_FORM_ENDPOINT || 'https://formspree.io/f/xqedeven';
+const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
+const FORMSPREE_CONTACT_ID = String(process.env.FORMSPREE_CONTACT_ID || '').trim();
+const FORMSPREE_ENVIO_ID = String(process.env.FORMSPREE_ENVIO_ID || '').trim();
+const RECAPTCHA_SECRET = String(process.env.RECAPTCHA_SECRET || '').trim();
+const RECAPTCHA_SITE_KEY = String(process.env.RECAPTCHA_SITE_KEY || '').trim();
+const RECAPTCHA_VERSION = String(process.env.RECAPTCHA_VERSION || 'v3').trim().toLowerCase() === 'v2'
+    ? 'v2'
+    : 'v3';
+const RECAPTCHA_MIN_SCORE = Number.parseFloat(process.env.RECAPTCHA_MIN_SCORE || '0.5') || 0.5;
+const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
+const RECAPTCHA_VERIFY_TIMEOUT_MS = Number.parseInt(process.env.RECAPTCHA_VERIFY_TIMEOUT_MS, 10) || 8000;
+const RECAPTCHA_ACTIONS = Object.freeze({
+    CONTACTO: 'contacto_submit',
+    ENVIOS: 'envios_submit'
+});
 const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
 const DELIVERY_CONFIG_PATH = path.resolve(__dirname, 'config', 'delivery-config.json');
 const COMMERCE_CONFIG_PATH = path.resolve(__dirname, 'config', 'commerce-config.json');
@@ -112,6 +128,24 @@ const QUOTE_STATUS_LABELS = Object.freeze({
     cancelled: 'Cancelado'
 });
 
+function buildFormspreeEndpoint(formId, fallbackEndpoint = '') {
+    const normalizedId = String(formId || '').trim();
+    if (normalizedId) {
+        return `https://formspree.io/f/${normalizedId}`;
+    }
+
+    return String(fallbackEndpoint || '').trim();
+}
+
+const FORMSPREE_CONTACT_ENDPOINT = buildFormspreeEndpoint(
+    FORMSPREE_CONTACT_ID,
+    LEGACY_CONTACT_FORM_ENDPOINT
+);
+const FORMSPREE_ENVIO_ENDPOINT = buildFormspreeEndpoint(
+    FORMSPREE_ENVIO_ID,
+    FORMSPREE_CONTACT_ENDPOINT
+);
+
 const defaultAllowedOrigins = [
     'https://zarpadomueble.com',
     'https://www.zarpadomueble.com',
@@ -119,6 +153,8 @@ const defaultAllowedOrigins = [
     'http://127.0.0.1:8888',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    FRONTEND_URL,
+    API_URL,
     BASE_URL
 ];
 
@@ -160,6 +196,14 @@ function createApiError(message, status = 400) {
     const error = new Error(message);
     error.status = status;
     return error;
+}
+
+function generateRequestId() {
+    if (typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+
+    return crypto.randomBytes(16).toString('hex');
 }
 
 const quoteUpload = multer({
@@ -386,6 +430,180 @@ const deliveryQuotePayloadSchema = z.object({
     postalCode: z.string().trim().min(4).max(10),
     items: z.array(checkoutItemPayloadSchema).max(MAX_CART_ITEMS).optional()
 }).passthrough();
+
+function getRequestIpAddress(request) {
+    const forwardedFor = String(request.get('x-forwarded-for') || '').trim();
+    if (forwardedFor) {
+        const firstForwardedIp = forwardedFor.split(',')[0]?.trim();
+        if (firstForwardedIp) {
+            return firstForwardedIp;
+        }
+    }
+
+    return String(request.ip || request.socket?.remoteAddress || '').trim();
+}
+
+function buildFormRequestMetadata(request) {
+    return {
+        ip: getRequestIpAddress(request),
+        userAgent: String(request.get('user-agent') || '').slice(0, 400),
+        origin: String(request.get('origin') || ''),
+        timestamp: new Date().toISOString(),
+        requestId: String(request.requestId || '')
+    };
+}
+
+async function verifyRecaptchaToken({ token, remoteIp, expectedAction }) {
+    if (!RECAPTCHA_SECRET) {
+        return {
+            ok: false,
+            error: 'recaptcha_not_configured'
+        };
+    }
+
+    const normalizedToken = String(token || '').trim();
+    if (!normalizedToken) {
+        return {
+            ok: false,
+            error: 'recaptcha_failed',
+            reason: 'missing_token'
+        };
+    }
+
+    const payload = new URLSearchParams();
+    payload.set('secret', RECAPTCHA_SECRET);
+    payload.set('response', normalizedToken);
+    if (remoteIp) {
+        payload.set('remoteip', remoteIp);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RECAPTCHA_VERIFY_TIMEOUT_MS);
+    let verificationResponse;
+    try {
+        verificationResponse = await fetch(RECAPTCHA_VERIFY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: payload.toString(),
+            signal: controller.signal
+        });
+    } catch (error) {
+        throw createApiError('recaptcha_verify_unavailable', 502);
+    } finally {
+        clearTimeout(timeoutId);
+    }
+
+    let verificationPayload = {};
+    try {
+        verificationPayload = await verificationResponse.json();
+    } catch {
+        verificationPayload = {};
+    }
+
+    const hasValidHostname = (() => {
+        const recaptchaHostname = String(verificationPayload?.hostname || '').trim().toLowerCase();
+        if (!recaptchaHostname) {
+            return true;
+        }
+
+        try {
+            const frontendHost = new URL(FRONTEND_URL).hostname.toLowerCase();
+            return (
+                recaptchaHostname === frontendHost
+                || recaptchaHostname === `www.${frontendHost}`
+                || frontendHost === `www.${recaptchaHostname}`
+            );
+        } catch {
+            return true;
+        }
+    })();
+
+    if (!verificationPayload?.success || !hasValidHostname) {
+        return {
+            ok: false,
+            error: 'recaptcha_failed',
+            reason: hasValidHostname ? 'provider_rejected' : 'hostname_mismatch',
+            details: Array.isArray(verificationPayload?.['error-codes'])
+                ? verificationPayload['error-codes']
+                : []
+        };
+    }
+
+    if (RECAPTCHA_VERSION === 'v3') {
+        const score = Number(verificationPayload?.score);
+        if (!Number.isFinite(score) || score < RECAPTCHA_MIN_SCORE) {
+            return {
+                ok: false,
+                error: 'recaptcha_failed',
+                reason: 'low_score',
+                score: Number.isFinite(score) ? score : null
+            };
+        }
+
+        const recaptchaAction = String(verificationPayload?.action || '').trim();
+        if (expectedAction && recaptchaAction && recaptchaAction !== expectedAction) {
+            return {
+                ok: false,
+                error: 'recaptcha_failed',
+                reason: 'action_mismatch'
+            };
+        }
+    }
+
+    return {
+        ok: true,
+        score: Number.isFinite(Number(verificationPayload?.score))
+            ? Number(verificationPayload.score)
+            : null
+    };
+}
+
+async function assertRecaptchaOrThrow(request, expectedAction) {
+    const verification = await verifyRecaptchaToken({
+        token: request.body?.recaptchaToken,
+        remoteIp: getRequestIpAddress(request),
+        expectedAction
+    });
+
+    if (verification.ok) {
+        return verification;
+    }
+
+    const status = verification.error === 'recaptcha_not_configured' ? 503 : 400;
+    const error = createApiError(verification.error || 'recaptcha_failed', status);
+    error.details = verification;
+    throw error;
+}
+
+async function submitFormspreeJson({ endpoint, payload }) {
+    if (!endpoint) {
+        throw createApiError('forms_provider_not_configured', 503);
+    }
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+        },
+        body: JSON.stringify(payload || {})
+    });
+
+    let responsePayload = {};
+    try {
+        responsePayload = await response.json();
+    } catch {
+        responsePayload = {};
+    }
+
+    if (!response.ok || responsePayload?.ok === false) {
+        throw createApiError('forms_provider_error', 502);
+    }
+
+    return responsePayload;
+}
 
 function ensureJsonFile(filePath, defaultValue) {
     const directory = path.dirname(filePath);
@@ -1396,14 +1614,25 @@ app.disable('x-powered-by');
 const cspDirectives = {
     defaultSrc: ["'self'"],
     baseUri: ["'self'"],
-    scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com'],
+    scriptSrc: [
+        "'self'",
+        'https://cdnjs.cloudflare.com',
+        'https://www.google.com/recaptcha/',
+        'https://www.gstatic.com/recaptcha/'
+    ],
     scriptSrcAttr: ["'none'"],
     styleSrc: ["'self'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
     styleSrcAttr: ["'unsafe-inline'"],
     fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
-    imgSrc: ["'self'", 'data:'],
-    connectSrc: ["'self'", 'https://api.mercadopago.com', 'https://formspree.io'],
-    formAction: ["'self'", CONTACT_FORM_ENDPOINT],
+    imgSrc: ["'self'", 'data:', 'https://www.google.com', 'https://www.gstatic.com'],
+    connectSrc: [
+        "'self'",
+        'https://api.mercadopago.com',
+        'https://formspree.io',
+        'https://www.google.com/recaptcha/'
+    ],
+    frameSrc: ["'self'", 'https://www.google.com', 'https://www.gstatic.com'],
+    formAction: ["'self'"],
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"]
 };
@@ -1470,17 +1699,35 @@ const corsOptions = {
         return callback(new Error('Origen no permitido por CORS'));
     },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token', 'X-Admin-Token'],
+    allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token', 'X-Admin-Token', 'X-Request-Id'],
     credentials: false,
     optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+app.use((request, response, next) => {
+    const incomingRequestId = String(request.get('x-request-id') || '').trim().slice(0, 120);
+    const requestId = incomingRequestId || generateRequestId();
+    request.requestId = requestId;
+    response.locals.requestId = requestId;
+    response.setHeader('X-Request-Id', requestId);
+    const startedAt = Date.now();
+
+    response.on('finish', () => {
+        if (!isProduction || request.path.startsWith('/forms/')) {
+            console.info(
+                `[${requestId}] ${request.method} ${request.originalUrl} ${response.statusCode} ${Date.now() - startedAt}ms`
+            );
+        }
+    });
+
+    next();
+});
 app.use(compression({ threshold: 1024 }));
 app.use(cookieParser());
-app.use(express.json({ limit: '16kb', strict: true }));
-app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+app.use(express.json({ limit: '1mb', strict: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 function createRandomToken(bytes = 32) {
     return crypto.randomBytes(bytes).toString('hex');
@@ -1566,6 +1813,17 @@ const quoteLimiter = rateLimit({
     }
 });
 
+const formsLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: Number.parseInt(process.env.FORMS_RATE_LIMIT_MAX, 10) || 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        ok: false,
+        error: 'Demasiados envíos de formulario. Esperá un minuto e intentá nuevamente.'
+    }
+});
+
 function hasAllowedOrigin(request) {
     const origin = request.get('origin');
     return isAllowedOrigin(origin);
@@ -1648,6 +1906,16 @@ app.use('/api/', apiLimiter);
 app.use('/api/mp/create-preference', checkoutLimiter, requireAllowedOrigin);
 app.use('/api/contact', contactLimiter, requireAllowedOrigin);
 app.use('/api/quotes', quoteLimiter, requireAllowedOrigin);
+app.use('/forms/', formsLimiter, requireAllowedOrigin);
+app.get('/forms/config', requireAllowedOrigin, (_request, response) => {
+    return response.json({
+        ok: true,
+        enabled: Boolean(RECAPTCHA_SITE_KEY),
+        version: RECAPTCHA_VERSION,
+        siteKey: RECAPTCHA_SITE_KEY,
+        minScore: RECAPTCHA_MIN_SCORE
+    });
+});
 app.get('/api/csrf-token', requireAllowedOrigin, attachCsrfSession, (req, res) => {
     if (!hasAllowedOrigin(req)) {
         return res.status(403).json({ ok: false, error: 'Origen no permitido' });
@@ -3244,8 +3512,109 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
     }
 });
 
-app.post('/api/contact', async (req, res, next) => {
+async function submitContactViaFormspree({
+    name,
+    email,
+    phone,
+    type,
+    message,
+    productReference,
+    metadata
+}) {
+    const payload = {
+        name,
+        email,
+        phone,
+        type,
+        message,
+        product_reference: productReference || '',
+        metadata_ip: metadata.ip || '',
+        metadata_user_agent: metadata.userAgent || '',
+        metadata_origin: metadata.origin || '',
+        metadata_timestamp: metadata.timestamp,
+        metadata_request_id: metadata.requestId || ''
+    };
+
+    await submitFormspreeJson({
+        endpoint: FORMSPREE_CONTACT_ENDPOINT,
+        payload
+    });
+
+    return 'formspree';
+}
+
+async function submitQuoteViaFormspree({
+    fullName,
+    email,
+    phone,
+    cityNeighborhood,
+    province,
+    furnitureType,
+    approximateMeasures,
+    estimatedBudget,
+    targetDate,
+    additionalComments,
+    photoMetadata,
+    photoFiles,
+    metadata
+}) {
+    if (!FORMSPREE_ENVIO_ENDPOINT) {
+        throw createApiError('forms_provider_not_configured', 503);
+    }
+
+    const payload = new FormData();
+    payload.set('form_type', 'quote_a_medida');
+    payload.set('full_name', fullName);
+    payload.set('email', email);
+    payload.set('phone', phone);
+    payload.set('city_neighborhood', cityNeighborhood);
+    payload.set('province', province);
+    payload.set('furniture_type', furnitureType);
+    payload.set('approximate_measures', approximateMeasures);
+    payload.set('estimated_budget', estimatedBudget || 'No informado');
+    payload.set('target_date', targetDate || 'No informada');
+    payload.set('additional_comments', additionalComments || 'Sin comentarios');
+    payload.set('files_count', String(photoMetadata.length));
+    payload.set('privacy_accepted', 'Sí');
+    payload.set('metadata_ip', metadata.ip || '');
+    payload.set('metadata_user_agent', metadata.userAgent || '');
+    payload.set('metadata_origin', metadata.origin || '');
+    payload.set('metadata_timestamp', metadata.timestamp);
+    payload.set('metadata_request_id', metadata.requestId || '');
+
+    // Formspree admite multipart/form-data con adjuntos reales.
+    photoFiles.forEach((file, index) => {
+        const filename = sanitizeSingleLine(file.originalname, 120) || `archivo-${index + 1}`;
+        const mimeType = sanitizeSingleLine(file.mimetype, 80) || 'application/octet-stream';
+        payload.append('attachment', new Blob([file.buffer], { type: mimeType }), filename);
+    });
+
+    const response = await fetch(FORMSPREE_ENVIO_ENDPOINT, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json'
+        },
+        body: payload
+    });
+
+    let responsePayload = {};
     try {
+        responsePayload = await response.json();
+    } catch {
+        responsePayload = {};
+    }
+
+    if (!response.ok || responsePayload?.ok === false) {
+        throw createApiError('forms_provider_error', 502);
+    }
+
+    return 'formspree';
+}
+
+async function handleContactSubmission(req, res, next) {
+    try {
+        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.CONTACTO);
+
         const contactPayload = parsePayloadWithSchema(
             contactPayloadSchema,
             req.body,
@@ -3258,52 +3627,12 @@ app.post('/api/contact', async (req, res, next) => {
         const message = contactPayload.message;
         const productReference = String(contactPayload.productReference || '').trim();
         const company = String(contactPayload.company || '').trim();
+        const requestMetadata = buildFormRequestMetadata(req);
 
         // Honeypot: bots suelen completar campos invisibles. Respondemos OK sin procesar.
         if (company) {
-            return res.json({ ok: true });
+            return res.json({ ok: true, requestId: req.requestId });
         }
-
-        const submitContactViaFormspree = async () => {
-            const payload = new URLSearchParams({
-                name,
-                email,
-                phone,
-                type,
-                message,
-                product_reference: productReference
-            });
-
-            const response = await fetch(CONTACT_FORM_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    Accept: 'application/json'
-                },
-                body: payload.toString()
-            });
-
-            let responsePayload = {};
-            try {
-                responsePayload = await response.json();
-            } catch {
-                responsePayload = {};
-            }
-
-            if (!response.ok || responsePayload?.ok !== true) {
-                const providerError = String(
-                    responsePayload?.errors?.[0]?.message
-                    || responsePayload?.error
-                    || ''
-                ).trim();
-                throw createApiError(
-                    providerError || 'No se pudo enviar el formulario de contacto',
-                    response.status >= 500 ? 502 : 400
-                );
-            }
-
-            return 'formspree';
-        };
 
         let provider = 'formspree';
         if (emailTransporter && ADMIN_EMAIL && FROM_EMAIL) {
@@ -3316,7 +3645,11 @@ app.post('/api/contact', async (req, res, next) => {
                 `Referencia de producto: ${productReference || 'No informada'}`,
                 '',
                 'Mensaje:',
-                message
+                message,
+                '',
+                `IP: ${requestMetadata.ip || 'No disponible'}`,
+                `Origen: ${requestMetadata.origin || 'No disponible'}`,
+                `Request ID: ${requestMetadata.requestId || 'No disponible'}`
             ];
 
             try {
@@ -3329,25 +3662,43 @@ app.post('/api/contact', async (req, res, next) => {
                 });
                 provider = 'smtp';
             } catch (smtpError) {
-                console.error(`❌ Error SMTP contacto: ${smtpError.message}`);
-                provider = await submitContactViaFormspree();
+                console.error(`[${req.requestId}] ❌ Error SMTP contacto: ${smtpError.message}`);
+                provider = await submitContactViaFormspree({
+                    name,
+                    email,
+                    phone,
+                    type,
+                    message,
+                    productReference,
+                    metadata: requestMetadata
+                });
             }
         } else {
-            provider = await submitContactViaFormspree();
+            provider = await submitContactViaFormspree({
+                name,
+                email,
+                phone,
+                type,
+                message,
+                productReference,
+                metadata: requestMetadata
+            });
         }
 
-        console.log(`📨 Contacto enviado (${provider}) desde ${email}`);
-        return res.json({ ok: true, provider });
+        console.log(`[${req.requestId}] 📨 Contacto enviado (${provider}) desde ${email}`);
+        return res.json({ ok: true, provider, requestId: req.requestId });
     } catch (error) {
         if (!error.status) {
-            console.error('❌ Error al enviar contacto:', error);
+            console.error(`[${req.requestId}] ❌ Error al enviar contacto:`, error);
         }
         return next(error);
     }
-});
+}
 
-app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), async (req, res, next) => {
+async function handleQuoteSubmission(req, res, next) {
     try {
+        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.ENVIOS);
+
         const quotePayload = parsePayloadWithSchema(
             quotePayloadSchema,
             req.body,
@@ -3357,7 +3708,7 @@ app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), async (req
         // Honeypot: bots suelen completar campos invisibles. Respondemos OK sin procesar.
         const company = sanitizeSingleLine(quotePayload.company, 200);
         if (company) {
-            return res.json({ ok: true });
+            return res.json({ ok: true, requestId: req.requestId });
         }
 
         const fullName = sanitizeSingleLine(quotePayload.fullName, 120);
@@ -3370,6 +3721,7 @@ app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), async (req
         const estimatedBudget = sanitizeSingleLine(quotePayload.estimatedBudget, 40);
         const targetDate = sanitizeSingleLine(quotePayload.targetDate, 20);
         const additionalComments = sanitizeMultiLine(quotePayload.additionalComments, 2000);
+        const requestMetadata = buildFormRequestMetadata(req);
 
         const photoFiles = Array.isArray(req.files)
             ? req.files
@@ -3380,59 +3732,6 @@ app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), async (req
             mimeType: sanitizeSingleLine(file.mimetype, 80),
             sizeKb: Math.max(1, Math.round((Number(file.size) || 0) / 1024))
         }));
-
-        const submitQuoteViaFormspree = async () => {
-            const payload = new FormData();
-            payload.set('form_type', 'quote_a_medida');
-            payload.set('full_name', fullName);
-            payload.set('email', email);
-            payload.set('phone', phone);
-            payload.set('city_neighborhood', cityNeighborhood);
-            payload.set('province', province);
-            payload.set('furniture_type', furnitureType);
-            payload.set('approximate_measures', approximateMeasures);
-            payload.set('estimated_budget', estimatedBudget || 'No informado');
-            payload.set('target_date', targetDate || 'No informada');
-            payload.set('additional_comments', additionalComments || 'Sin comentarios');
-            payload.set('files_count', String(photoMetadata.length));
-            payload.set('privacy_accepted', 'Sí');
-
-            // Formspree admite multipart/form-data con adjuntos reales.
-            photoFiles.forEach((file, index) => {
-                const filename = sanitizeSingleLine(file.originalname, 120) || `archivo-${index + 1}`;
-                const mimeType = sanitizeSingleLine(file.mimetype, 80) || 'application/octet-stream';
-                payload.append('attachment', new Blob([file.buffer], { type: mimeType }), filename);
-            });
-
-            const response = await fetch(CONTACT_FORM_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json'
-                },
-                body: payload
-            });
-
-            let responsePayload = {};
-            try {
-                responsePayload = await response.json();
-            } catch {
-                responsePayload = {};
-            }
-
-            if (!response.ok || responsePayload?.ok !== true) {
-                const providerError = String(
-                    responsePayload?.errors?.[0]?.message
-                    || responsePayload?.error
-                    || ''
-                ).trim();
-                throw createApiError(
-                    providerError || 'No se pudo enviar la solicitud de cotización',
-                    response.status >= 500 ? 502 : 400
-                );
-            }
-
-            return 'formspree';
-        };
 
         let provider = 'formspree';
         if (emailTransporter && ADMIN_EMAIL && FROM_EMAIL) {
@@ -3451,7 +3750,10 @@ app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), async (req
                 'Comentarios adicionales:',
                 additionalComments || 'Sin comentarios',
                 '',
-                `Archivos adjuntos: ${photoMetadata.length}`
+                `Archivos adjuntos: ${photoMetadata.length}`,
+                `IP: ${requestMetadata.ip || 'No disponible'}`,
+                `Origen: ${requestMetadata.origin || 'No disponible'}`,
+                `Request ID: ${requestMetadata.requestId || 'No disponible'}`
             ];
 
             if (photoMetadata.length > 0) {
@@ -3475,11 +3777,39 @@ app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), async (req
                 });
                 provider = 'smtp';
             } catch (smtpError) {
-                console.error(`❌ Error SMTP cotización: ${smtpError.message}`);
-                provider = await submitQuoteViaFormspree();
+                console.error(`[${req.requestId}] ❌ Error SMTP cotización: ${smtpError.message}`);
+                provider = await submitQuoteViaFormspree({
+                    fullName,
+                    email,
+                    phone,
+                    cityNeighborhood,
+                    province,
+                    furnitureType,
+                    approximateMeasures,
+                    estimatedBudget,
+                    targetDate,
+                    additionalComments,
+                    photoMetadata,
+                    photoFiles,
+                    metadata: requestMetadata
+                });
             }
         } else {
-            provider = await submitQuoteViaFormspree();
+            provider = await submitQuoteViaFormspree({
+                fullName,
+                email,
+                phone,
+                cityNeighborhood,
+                province,
+                furnitureType,
+                approximateMeasures,
+                estimatedBudget,
+                targetDate,
+                additionalComments,
+                photoMetadata,
+                photoFiles,
+                metadata: requestMetadata
+            });
         }
 
         const quoteId = generateQuoteId();
@@ -3516,19 +3846,25 @@ app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), async (req
 
         await sendQuoteLifecycleEmail(createdQuote, 'received');
 
-        console.log(`🧾 Cotización A Medida ${quoteId} enviada (${provider}) por ${email}`);
+        console.log(`[${req.requestId}] 🧾 Cotización A Medida ${quoteId} enviada (${provider}) por ${email}`);
         return res.json({
             ok: true,
             quoteId,
+            requestId: req.requestId,
             message: 'Recibimos tu solicitud. En menos de 24 horas hábiles te vamos a contactar por WhatsApp o email para validar medidas y enviarte la propuesta.'
         });
     } catch (error) {
         if (!error.status) {
-            console.error('❌ Error al enviar cotización:', error);
+            console.error(`[${req.requestId}] ❌ Error al enviar cotización:`, error);
         }
         return next(error);
     }
-});
+}
+
+app.post('/api/contact', handleContactSubmission);
+app.post('/forms/contacto', handleContactSubmission);
+app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
+app.post('/forms/envios', quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
 
 app.post('/api/mp/webhook', async (req, res, next) => {
     const topic = extractWebhookTopic(req) || 'unknown';
@@ -4452,44 +4788,49 @@ app.use((req, res, next) => {
 });
 
 app.use((error, req, res, _next) => {
+    const requestId = String(req.requestId || res.locals.requestId || generateRequestId());
     if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
                 ok: false,
-                error: `Cada archivo puede pesar hasta ${QUOTE_FILE_MAX_MB} MB.`
+                error: `Cada archivo puede pesar hasta ${QUOTE_FILE_MAX_MB} MB.`,
+                requestId
             });
         }
 
         if (error.code === 'LIMIT_FILE_COUNT') {
             return res.status(400).json({
                 ok: false,
-                error: `Podés adjuntar hasta ${QUOTE_MAX_FILES} archivos.`
+                error: `Podés adjuntar hasta ${QUOTE_MAX_FILES} archivos.`,
+                requestId
             });
         }
 
         return res.status(400).json({
             ok: false,
-            error: 'Error al procesar los archivos adjuntos.'
+            error: 'Error al procesar los archivos adjuntos.',
+            requestId
         });
     }
 
     if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
-        return res.status(400).json({ ok: false, error: 'JSON inválido en el request body' });
+        return res.status(400).json({ ok: false, error: 'JSON inválido en el request body', requestId });
     }
 
     if (error.name === 'AbortError') {
-        return res.status(504).json({ ok: false, error: 'Timeout al comunicarse con Mercado Pago' });
+        return res.status(504).json({ ok: false, error: 'Timeout al comunicarse con Mercado Pago', requestId });
     }
 
     if (error.message === 'Origen no permitido por CORS') {
-        return res.status(403).json({ ok: false, error: 'Origen no permitido' });
+        return res.status(403).json({ ok: false, error: 'Origen no permitido', requestId });
     }
 
     if (isMercadoPagoNetworkError(error)) {
         return res.status(503).json({
             ok: false,
             error: 'No pudimos conectar con Mercado Pago en este momento. Verificá conectividad de red/firewall y reintentá.',
-            code: 'MP_UNREACHABLE'
+            code: 'MP_UNREACHABLE',
+            requestId
         });
     }
 
@@ -4498,18 +4839,24 @@ app.use((error, req, res, _next) => {
         ok: false,
         error: status === 500
             ? 'Error interno del servidor. Intenta nuevamente.'
-            : error.message
+            : error.message,
+        requestId
     };
 
     if (status === 500 && process.env.NODE_ENV === 'development') {
         payload.details = error.message;
     }
 
+    if (status >= 500 || !isProduction) {
+        console.error(`[${requestId}] ❌ ${req.method} ${req.originalUrl} -> ${status}: ${error.message}`);
+    }
+
     return res.status(status).json(payload);
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+    console.log(`🌐 API URL esperada: ${API_URL}`);
     console.log(`💳 Mercado Pago: ${hasMercadoPagoAccessToken ? 'configurado' : 'deshabilitado (falta MP_ACCESS_TOKEN)'}`);
     console.log(`🛡️ CORS permitido para: ${Array.from(allowedOrigins).join(', ')} (+ *.netlify.app)`);
     console.log(`🔔 Webhook MP: ${process.env.NOTIFICATION_URL || '(no configurado)'}`);

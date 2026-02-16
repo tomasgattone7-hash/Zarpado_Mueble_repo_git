@@ -1,62 +1,61 @@
-# Flujo Post-Pago Mercado Pago + Datos + Emails
-
-Implementación activa en `../server.js`.
+# Backend API (Railway)
 
 ## Endpoints principales
 
 - `POST /api/mp/create-preference`
-- `POST /api/mp/webhook`
-- `POST /api/order/details`
-- Compatibilidad legacy: `POST /api/orders/:orderId/delivery-details`
+- `GET /api/health`
+- `GET /health`
+- `GET /forms/config`
+- `POST /forms/contacto`
+- `POST /forms/envios`
+- Compatibilidad: `POST /api/contact`, `POST /api/quotes`
+
+## Flujo formularios (AJAX + reCAPTCHA + Formspree)
+
+1. Frontend obtiene configuración pública en `GET /forms/config`.
+2. Frontend ejecuta reCAPTCHA y envía `recaptchaToken` por AJAX al backend.
+3. Backend valida payload + reCAPTCHA + rate-limit.
+4. Backend reenvía server-to-server a Formspree.
+
+Nunca se expone `RECAPTCHA_SECRET` en el frontend.
 
 ## Variables de entorno (`.env`)
 
 ```env
 MP_ACCESS_TOKEN=APP_USR_xxx
-NOTIFICATION_URL=https://tu-dominio.com/api/mp/webhook
-MP_API_TIMEOUT_MS=10000
-MP_WEBHOOK_SECRET=opcional_si_activas_firma
+BASE_URL=https://zarpadomueble.com
+FRONTEND_URL=https://zarpadomueble.com
+API_URL=https://api.zarpadomueble.com
+ALLOWED_ORIGINS=https://zarpadomueble.com,https://www.zarpadomueble.com
 
-SMTP_HOST=smtp.tudominio.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=usuario_smtp
-SMTP_PASS=clave_smtp
-FROM_EMAIL=ventas@tudominio.com
-ADMIN_EMAIL=admin@tudominio.com
+RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET=
+RECAPTCHA_VERSION=v3
+RECAPTCHA_MIN_SCORE=0.5
 
-BASE_URL=https://tu-dominio.com
+FORMSPREE_CONTACT_ID=
+FORMSPREE_ENVIO_ID=
+
+CONTACT_RATE_LIMIT_MAX=10
+QUOTE_RATE_LIMIT_MAX=10
+FORMS_RATE_LIMIT_MAX=10
 ```
 
-Si SMTP no está configurado, el flujo de compra funciona igual pero no se envían emails.
-Si el email del comprador no se conoce antes de pagar, se completa en `datos-envio.html`.
+## Cómo obtener los IDs y keys
 
-## Configurar webhook en Mercado Pago
+- `FORMSPREE_*`:
+  - Panel de Formspree o del action histórico `https://formspree.io/f/xxxx` (ID = `xxxx`).
+- `RECAPTCHA_SITE_KEY` y `RECAPTCHA_SECRET`:
+  - Google reCAPTCHA Admin Console (mismo dominio del frontend).
 
-1. Ir a tu aplicación en Mercado Pago Developers.
-2. En Webhooks/Notificaciones, configurar URL:
-   - `https://tu-dominio.com/api/mp/webhook`
-3. Activar eventos de `payment` (y opcional `merchant_order`).
-4. Guardar cambios.
+## Prueba rápida local
 
-## Prueba local
-
-1. Instalar dependencias y correr servidor:
+Con variables cargadas:
 
 ```bash
-cd /home/tomii/Escritorio/Pagina\ Web\ ZM\ editable/muebles_web
-npm install
-npm start
+curl -i -X POST http://localhost:3000/forms/contacto \
+  -H "Content-Type: application/json" \
+  -d '{"name":"t","email":"t@t.com","message":"mensaje de prueba","recaptchaToken":"TEST"}'
 ```
 
-2. Exponer local con ngrok (opcional):
-
-```bash
-ngrok http 3000
-```
-
-3. Configurar en MP el webhook con la URL HTTPS de ngrok + `/api/mp/webhook`.
-4. Hacer checkout desde catálogo, pagar en MP, completar `datos-envio.html`.
-5. Verificar en `data/orders.json`:
-   - `paid: true`
-   - `emails_sent: true` (si SMTP está configurado)
+Con token inválido: responde `400` + `{"ok":false,"error":"recaptcha_failed"}`.

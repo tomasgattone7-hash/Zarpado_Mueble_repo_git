@@ -1,4 +1,4 @@
-/api/*  https://zarpadomueblerepogit-production.up.railway.app/api/:splat  200
+/api/*  https://api.zarpadomueble.com/api/:splat  200
 /tienda  /tienda.html  200
 /a-medida  /a-medida.html  200
 /contacto  /contacto.html  200

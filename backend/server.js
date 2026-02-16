@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import fetch from 'node-fetch';
+import multer from 'multer';
+import fetch, { Blob, FormData } from 'node-fetch';
 import crypto from 'node:crypto';
 
 dotenv.config();
@@ -12,12 +13,54 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://zarpadomueble.com';
+const API_URL = process.env.API_URL || 'https://api.zarpadomueble.com';
 const isProduction = process.env.NODE_ENV === 'production';
 
 const MAX_CART_ITEMS = Number.parseInt(process.env.MAX_CART_ITEMS, 10) || 20;
 const MAX_ITEM_QUANTITY = Number.parseInt(process.env.MAX_ITEM_QUANTITY, 10) || 10;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
 const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
+const FORMSPREE_CONTACT_ID = String(process.env.FORMSPREE_CONTACT_ID || '').trim();
+const FORMSPREE_ENVIO_ID = String(process.env.FORMSPREE_ENVIO_ID || '').trim();
+const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
+const RECAPTCHA_SECRET = String(process.env.RECAPTCHA_SECRET || '').trim();
+const RECAPTCHA_SITE_KEY = String(process.env.RECAPTCHA_SITE_KEY || '').trim();
+const RECAPTCHA_VERSION = String(process.env.RECAPTCHA_VERSION || 'v3').trim().toLowerCase() === 'v2'
+    ? 'v2'
+    : 'v3';
+const RECAPTCHA_MIN_SCORE = Number.parseFloat(process.env.RECAPTCHA_MIN_SCORE || '0.5') || 0.5;
+const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
+const RECAPTCHA_VERIFY_TIMEOUT_MS = Number.parseInt(process.env.RECAPTCHA_VERIFY_TIMEOUT_MS, 10) || 8000;
+const RECAPTCHA_ACTIONS = Object.freeze({
+    CONTACTO: 'contacto_submit',
+    ENVIOS: 'envios_submit'
+});
+const QUOTE_MAX_FILES = Number.parseInt(process.env.QUOTE_MAX_FILES, 10) || 6;
+const QUOTE_FILE_MAX_MB = Number.parseInt(process.env.QUOTE_FILE_MAX_MB, 10) || 5;
+const QUOTE_FILE_SIZE_BYTES = QUOTE_FILE_MAX_MB * 1024 * 1024;
+const QUOTE_ALLOWED_FILE_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf'
+]);
+const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const NAME_PATTERN = /^[a-zA-ZÀ-ÿ0-9 .,'-]{2,120}$/u;
+const PHONE_PATTERN = /^[0-9+()\-\s]{6,40}$/;
+const CITY_NEIGHBORHOOD_PATTERN = /^[a-zA-ZÀ-ÿ0-9 .,'-]{2,120}$/u;
+const BUDGET_PATTERN = /^[0-9$.,\s-]{1,40}$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const CONTACT_TYPE_OPTIONS = new Set(['', 'Escritorio', 'Rack TV', 'Cocina', 'Placard', 'Otro']);
+const QUOTE_FURNITURE_TYPE_OPTIONS = new Set([
+    'Escritorio',
+    'Rack TV',
+    'Cocina',
+    'Placard',
+    'Vestidor',
+    'Biblioteca',
+    'Otro'
+]);
 const csrfSessions = new Map();
 
 const PRODUCT_CATALOG = Object.freeze({
@@ -34,6 +77,24 @@ const PRODUCT_CATALOG = Object.freeze({
     11: { name: 'Escritorio Melamina', price: 130000 }
 });
 
+function buildFormspreeEndpoint(formId, fallbackEndpoint = '') {
+    const normalizedId = String(formId || '').trim();
+    if (normalizedId) {
+        return `https://formspree.io/f/${normalizedId}`;
+    }
+
+    return String(fallbackEndpoint || '').trim();
+}
+
+const FORMSPREE_CONTACT_ENDPOINT = buildFormspreeEndpoint(
+    FORMSPREE_CONTACT_ID,
+    LEGACY_CONTACT_FORM_ENDPOINT
+);
+const FORMSPREE_ENVIO_ENDPOINT = buildFormspreeEndpoint(
+    FORMSPREE_ENVIO_ID,
+    FORMSPREE_CONTACT_ENDPOINT
+);
+
 const defaultAllowedOrigins = [
     'https://zarpadomueble.com',
     'https://www.zarpadomueble.com',
@@ -41,6 +102,8 @@ const defaultAllowedOrigins = [
     'http://127.0.0.1:8888',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    FRONTEND_URL,
+    API_URL,
     BASE_URL
 ];
 
@@ -78,6 +141,217 @@ function isAllowedOrigin(origin) {
     return allowedOrigins.has(origin) || isNetlifyOrigin(origin);
 }
 
+function createApiError(message, status = 400) {
+    const error = new Error(message);
+    error.status = status;
+    return error;
+}
+
+function generateRequestId() {
+    if (typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+
+    return crypto.randomBytes(16).toString('hex');
+}
+
+function normalizeText(value, maxLength = 2000) {
+    return String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+}
+
+function sanitizeMultiLine(value, maxLength = 2000) {
+    return String(value || '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .trim()
+        .slice(0, maxLength);
+}
+
+function getRequestIpAddress(request) {
+    const forwardedFor = String(request.get('x-forwarded-for') || '').trim();
+    if (forwardedFor) {
+        const firstForwardedIp = forwardedFor.split(',')[0]?.trim();
+        if (firstForwardedIp) {
+            return firstForwardedIp;
+        }
+    }
+
+    return String(request.ip || request.socket?.remoteAddress || '').trim();
+}
+
+function buildFormRequestMetadata(request) {
+    return {
+        ip: getRequestIpAddress(request),
+        userAgent: normalizeText(request.get('user-agent') || '', 400),
+        origin: normalizeText(request.get('origin') || '', 200),
+        timestamp: new Date().toISOString(),
+        requestId: normalizeText(request.requestId || '', 120)
+    };
+}
+
+async function verifyRecaptchaToken({ token, remoteIp, expectedAction }) {
+    if (!RECAPTCHA_SECRET) {
+        return {
+            ok: false,
+            error: 'recaptcha_not_configured'
+        };
+    }
+
+    const normalizedToken = normalizeText(token, 4000);
+    if (!normalizedToken) {
+        return {
+            ok: false,
+            error: 'recaptcha_failed',
+            reason: 'missing_token'
+        };
+    }
+
+    const payload = new URLSearchParams();
+    payload.set('secret', RECAPTCHA_SECRET);
+    payload.set('response', normalizedToken);
+    if (remoteIp) {
+        payload.set('remoteip', remoteIp);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RECAPTCHA_VERIFY_TIMEOUT_MS);
+    let verificationResponse;
+    try {
+        verificationResponse = await fetch(RECAPTCHA_VERIFY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: payload.toString(),
+            signal: controller.signal
+        });
+    } catch {
+        throw createApiError('recaptcha_verify_unavailable', 502);
+    } finally {
+        clearTimeout(timeoutId);
+    }
+
+    let verificationPayload = {};
+    try {
+        verificationPayload = await verificationResponse.json();
+    } catch {
+        verificationPayload = {};
+    }
+
+    const hasValidHostname = (() => {
+        const recaptchaHostname = String(verificationPayload?.hostname || '').trim().toLowerCase();
+        if (!recaptchaHostname) {
+            return true;
+        }
+
+        try {
+            const frontendHost = new URL(FRONTEND_URL).hostname.toLowerCase();
+            return (
+                recaptchaHostname === frontendHost
+                || recaptchaHostname === `www.${frontendHost}`
+                || frontendHost === `www.${recaptchaHostname}`
+            );
+        } catch {
+            return true;
+        }
+    })();
+
+    if (!verificationPayload?.success || !hasValidHostname) {
+        return {
+            ok: false,
+            error: 'recaptcha_failed',
+            reason: hasValidHostname ? 'provider_rejected' : 'hostname_mismatch'
+        };
+    }
+
+    if (RECAPTCHA_VERSION === 'v3') {
+        const score = Number(verificationPayload?.score);
+        if (!Number.isFinite(score) || score < RECAPTCHA_MIN_SCORE) {
+            return {
+                ok: false,
+                error: 'recaptcha_failed',
+                reason: 'low_score'
+            };
+        }
+
+        const recaptchaAction = normalizeText(verificationPayload?.action, 80);
+        if (expectedAction && recaptchaAction && recaptchaAction !== expectedAction) {
+            return {
+                ok: false,
+                error: 'recaptcha_failed',
+                reason: 'action_mismatch'
+            };
+        }
+    }
+
+    return {
+        ok: true
+    };
+}
+
+async function assertRecaptchaOrThrow(request, expectedAction) {
+    const verification = await verifyRecaptchaToken({
+        token: request.body?.recaptchaToken,
+        remoteIp: getRequestIpAddress(request),
+        expectedAction
+    });
+
+    if (verification.ok) {
+        return;
+    }
+
+    const status = verification.error === 'recaptcha_not_configured' ? 503 : 400;
+    const error = createApiError(verification.error || 'recaptcha_failed', status);
+    error.details = verification;
+    throw error;
+}
+
+async function submitFormspreeJson({ endpoint, payload }) {
+    if (!endpoint) {
+        throw createApiError('forms_provider_not_configured', 503);
+    }
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+        },
+        body: JSON.stringify(payload || {})
+    });
+
+    let responsePayload = {};
+    try {
+        responsePayload = await response.json();
+    } catch {
+        responsePayload = {};
+    }
+
+    if (!response.ok || responsePayload?.ok === false) {
+        throw createApiError('forms_provider_error', 502);
+    }
+}
+
+const quoteUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        files: QUOTE_MAX_FILES,
+        fileSize: QUOTE_FILE_SIZE_BYTES,
+        fields: 30
+    },
+    fileFilter: (_request, file, callback) => {
+        const mimeType = String(file?.mimetype || '').toLowerCase();
+        if (!QUOTE_ALLOWED_FILE_MIME_TYPES.has(mimeType)) {
+            return callback(createApiError(
+                'Formato de archivo no permitido. Solo JPG, PNG, WEBP o PDF.',
+                400
+            ));
+        }
+
+        return callback(null, true);
+    }
+});
+
 const trustProxyValue = process.env.TRUST_PROXY;
 const trustProxySetting = trustProxyValue === undefined
     ? 1
@@ -89,8 +363,21 @@ app.disable('x-powered-by');
 const cspDirectives = {
     defaultSrc: ["'self'"],
     baseUri: ["'self'"],
+    scriptSrc: [
+        "'self'",
+        'https://www.google.com/recaptcha/',
+        'https://www.gstatic.com/recaptcha/'
+    ],
     scriptSrcAttr: ["'none'"],
-    connectSrc: ["'self'", 'https://api.mercadopago.com', 'https://formspree.io'],
+    connectSrc: [
+        "'self'",
+        'https://api.mercadopago.com',
+        'https://formspree.io',
+        'https://www.google.com/recaptcha/'
+    ],
+    imgSrc: ["'self'", 'data:', 'https://www.google.com', 'https://www.gstatic.com'],
+    frameSrc: ["'self'", 'https://www.google.com', 'https://www.gstatic.com'],
+    formAction: ["'self'"],
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"]
 };
@@ -144,17 +431,35 @@ const corsOptions = {
 
         return callback(new Error('Origen no permitido por CORS'));
     },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token'],
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token', 'X-Request-Id'],
     credentials: false,
     optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+app.use((request, response, next) => {
+    const incomingRequestId = normalizeText(request.get('x-request-id'), 120);
+    const requestId = incomingRequestId || generateRequestId();
+    request.requestId = requestId;
+    response.locals.requestId = requestId;
+    response.setHeader('X-Request-Id', requestId);
+    const startedAt = Date.now();
+
+    response.on('finish', () => {
+        if (!isProduction || request.path.startsWith('/forms/')) {
+            console.info(
+                `[${requestId}] ${request.method} ${request.originalUrl} ${response.statusCode} ${Date.now() - startedAt}ms`
+            );
+        }
+    });
+
+    next();
+});
 app.use(compression({ threshold: 1024 }));
-app.use(express.json({ limit: '16kb', strict: true }));
-app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+app.use(express.json({ limit: '1mb', strict: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 function parseCookies(cookieHeader = '') {
     const safeDecode = (value) => {
@@ -224,6 +529,18 @@ function hasAllowedOrigin(request) {
     return isAllowedOrigin(request.get('origin'));
 }
 
+function requireAllowedOrigin(request, response, next) {
+    if (hasAllowedOrigin(request)) {
+        return next();
+    }
+
+    if (!isProduction) {
+        console.warn(`[CORS] Request bloqueado por origin inválido: ${request.get('origin') || 'null'}`);
+    }
+
+    return response.status(403).json({ ok: false, error: 'Origen no permitido' });
+}
+
 app.use((request, response, next) => {
     const { csrfToken } = getOrCreateCsrfSession(request, response);
     response.locals.csrfToken = csrfToken;
@@ -252,7 +569,51 @@ const checkoutLimiter = rateLimit({
     }
 });
 
+const contactLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: Number.parseInt(process.env.CONTACT_RATE_LIMIT_MAX, 10) || 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        ok: false,
+        error: 'Demasiados envíos de formulario. Probá nuevamente en unos minutos.'
+    }
+});
+
+const quoteLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: Number.parseInt(process.env.QUOTE_RATE_LIMIT_MAX, 10) || 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        ok: false,
+        error: 'Demasiadas solicitudes de cotización. Esperá unos minutos y volvé a intentar.'
+    }
+});
+
+const formsLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: Number.parseInt(process.env.FORMS_RATE_LIMIT_MAX, 10) || 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        ok: false,
+        error: 'Demasiados envíos de formulario. Esperá un minuto e intentá nuevamente.'
+    }
+});
+
 app.use('/api/', apiLimiter);
+app.use('/api/mp/create-preference', checkoutLimiter, requireAllowedOrigin);
+app.use('/forms/', formsLimiter, requireAllowedOrigin);
+app.get('/forms/config', requireAllowedOrigin, (_request, response) => {
+    return response.json({
+        ok: true,
+        enabled: Boolean(RECAPTCHA_SITE_KEY),
+        version: RECAPTCHA_VERSION,
+        siteKey: RECAPTCHA_SITE_KEY,
+        minScore: RECAPTCHA_MIN_SCORE
+    });
+});
 app.get('/api/csrf-token', (request, response) => {
     if (!hasAllowedOrigin(request)) {
         return response.status(403).json({ ok: false, error: 'Origen no permitido' });
@@ -260,7 +621,6 @@ app.get('/api/csrf-token', (request, response) => {
 
     return response.json({ ok: true, csrfToken: response.locals.csrfToken });
 });
-app.use('/api/mp/create-preference', checkoutLimiter);
 
 if (!process.env.MP_ACCESS_TOKEN) {
     console.error('❌ ERROR CRÍTICO: MP_ACCESS_TOKEN no está configurado en .env');
@@ -316,6 +676,224 @@ function buildValidatedItems(rawItems) {
 
     return validatedItems;
 }
+
+function validateContactPayload(rawPayload = {}) {
+    const payload = {
+        name: normalizeText(rawPayload.name, 120),
+        email: normalizeText(rawPayload.email, 160).toLowerCase(),
+        phone: normalizeText(rawPayload.phone, 40),
+        type: normalizeText(rawPayload.type, 60),
+        message: sanitizeMultiLine(rawPayload.message, 3000),
+        productReference: normalizeText(rawPayload.productReference, 120),
+        company: normalizeText(rawPayload.company, 200)
+    };
+
+    if (!payload.name || payload.name.length < 2 || !NAME_PATTERN.test(payload.name)) {
+        throw createApiError('Nombre inválido', 400);
+    }
+
+    if (!payload.email || !EMAIL_PATTERN.test(payload.email)) {
+        throw createApiError('Email inválido', 400);
+    }
+
+    if (payload.phone && !PHONE_PATTERN.test(payload.phone)) {
+        throw createApiError('Teléfono inválido', 400);
+    }
+
+    if (!CONTACT_TYPE_OPTIONS.has(payload.type)) {
+        throw createApiError('Tipo de mueble inválido', 400);
+    }
+
+    if (!payload.message || payload.message.length < 10) {
+        throw createApiError('El mensaje debe tener al menos 10 caracteres', 400);
+    }
+
+    return payload;
+}
+
+function validateQuotePayload(rawPayload = {}) {
+    const payload = {
+        fullName: normalizeText(rawPayload.fullName, 120),
+        email: normalizeText(rawPayload.email, 160).toLowerCase(),
+        phone: normalizeText(rawPayload.phone, 40),
+        cityNeighborhood: normalizeText(rawPayload.cityNeighborhood, 120),
+        province: normalizeText(rawPayload.province, 80),
+        furnitureType: normalizeText(rawPayload.furnitureType, 80),
+        approximateMeasures: sanitizeMultiLine(rawPayload.approximateMeasures, 600),
+        estimatedBudget: normalizeText(rawPayload.estimatedBudget, 40),
+        targetDate: normalizeText(rawPayload.targetDate, 20),
+        additionalComments: sanitizeMultiLine(rawPayload.additionalComments, 2000),
+        privacyAccepted: normalizeText(rawPayload.privacyAccepted, 20).toLowerCase(),
+        company: normalizeText(rawPayload.company, 200)
+    };
+
+    const acceptedPrivacy = new Set(['true', '1', 'on', 'yes', 'si', 'sí']);
+
+    if (!payload.fullName || payload.fullName.length < 2 || !NAME_PATTERN.test(payload.fullName)) {
+        throw createApiError('Nombre completo inválido', 400);
+    }
+
+    if (!payload.email || !EMAIL_PATTERN.test(payload.email)) {
+        throw createApiError('Email inválido', 400);
+    }
+
+    if (!payload.phone || !PHONE_PATTERN.test(payload.phone)) {
+        throw createApiError('Teléfono inválido', 400);
+    }
+
+    if (!payload.cityNeighborhood || !CITY_NEIGHBORHOOD_PATTERN.test(payload.cityNeighborhood)) {
+        throw createApiError('Ingresá una ciudad o barrio válido', 400);
+    }
+
+    if (!payload.province || !CITY_NEIGHBORHOOD_PATTERN.test(payload.province)) {
+        throw createApiError('Ingresá una provincia válida', 400);
+    }
+
+    if (!QUOTE_FURNITURE_TYPE_OPTIONS.has(payload.furnitureType)) {
+        throw createApiError('Tipo de mueble inválido', 400);
+    }
+
+    if (!payload.approximateMeasures || payload.approximateMeasures.length < 5) {
+        throw createApiError('Completá las medidas aproximadas para cotizar', 400);
+    }
+
+    if (payload.estimatedBudget && !BUDGET_PATTERN.test(payload.estimatedBudget)) {
+        throw createApiError('Presupuesto estimado inválido', 400);
+    }
+
+    if (payload.targetDate && !DATE_PATTERN.test(payload.targetDate)) {
+        throw createApiError('Fecha objetivo inválida', 400);
+    }
+
+    if (!acceptedPrivacy.has(payload.privacyAccepted)) {
+        throw createApiError('Debés aceptar la Política de Privacidad', 400);
+    }
+
+    return payload;
+}
+
+async function submitQuoteViaFormspree({
+    quotePayload,
+    photoFiles,
+    metadata
+}) {
+    if (!FORMSPREE_ENVIO_ENDPOINT) {
+        throw createApiError('forms_provider_not_configured', 503);
+    }
+
+    const payload = new FormData();
+    payload.set('form_type', 'quote_a_medida');
+    payload.set('full_name', quotePayload.fullName);
+    payload.set('email', quotePayload.email);
+    payload.set('phone', quotePayload.phone);
+    payload.set('city_neighborhood', quotePayload.cityNeighborhood);
+    payload.set('province', quotePayload.province);
+    payload.set('furniture_type', quotePayload.furnitureType);
+    payload.set('approximate_measures', quotePayload.approximateMeasures);
+    payload.set('estimated_budget', quotePayload.estimatedBudget || 'No informado');
+    payload.set('target_date', quotePayload.targetDate || 'No informada');
+    payload.set('additional_comments', quotePayload.additionalComments || 'Sin comentarios');
+    payload.set('files_count', String(photoFiles.length));
+    payload.set('privacy_accepted', 'Sí');
+    payload.set('metadata_ip', metadata.ip || '');
+    payload.set('metadata_user_agent', metadata.userAgent || '');
+    payload.set('metadata_origin', metadata.origin || '');
+    payload.set('metadata_timestamp', metadata.timestamp);
+    payload.set('metadata_request_id', metadata.requestId || '');
+
+    photoFiles.forEach((file, index) => {
+        const filename = normalizeText(file.originalname, 120) || `archivo-${index + 1}`;
+        const mimeType = normalizeText(file.mimetype, 80) || 'application/octet-stream';
+        payload.append('attachment', new Blob([file.buffer], { type: mimeType }), filename);
+    });
+
+    const response = await fetch(FORMSPREE_ENVIO_ENDPOINT, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json'
+        },
+        body: payload
+    });
+
+    let responsePayload = {};
+    try {
+        responsePayload = await response.json();
+    } catch {
+        responsePayload = {};
+    }
+
+    if (!response.ok || responsePayload?.ok === false) {
+        throw createApiError('forms_provider_error', 502);
+    }
+}
+
+async function handleContactSubmission(req, res, next) {
+    try {
+        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.CONTACTO);
+        const contactPayload = validateContactPayload(req.body || {});
+        const metadata = buildFormRequestMetadata(req);
+
+        // Honeypot.
+        if (contactPayload.company) {
+            return res.json({ ok: true, requestId: req.requestId });
+        }
+
+        await submitFormspreeJson({
+            endpoint: FORMSPREE_CONTACT_ENDPOINT,
+            payload: {
+                form_type: 'contacto',
+                name: contactPayload.name,
+                email: contactPayload.email,
+                phone: contactPayload.phone || 'No informado',
+                type: contactPayload.type || 'No informado',
+                message: contactPayload.message,
+                product_reference: contactPayload.productReference || '',
+                metadata_ip: metadata.ip || '',
+                metadata_user_agent: metadata.userAgent || '',
+                metadata_origin: metadata.origin || '',
+                metadata_timestamp: metadata.timestamp,
+                metadata_request_id: metadata.requestId || ''
+            }
+        });
+
+        return res.json({ ok: true, requestId: req.requestId });
+    } catch (error) {
+        return next(error);
+    }
+}
+
+async function handleQuoteSubmission(req, res, next) {
+    try {
+        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.ENVIOS);
+        const quotePayload = validateQuotePayload(req.body || {});
+
+        // Honeypot.
+        if (quotePayload.company) {
+            return res.json({ ok: true, requestId: req.requestId });
+        }
+
+        const photoFiles = Array.isArray(req.files) ? req.files : [];
+        const metadata = buildFormRequestMetadata(req);
+        await submitQuoteViaFormspree({
+            quotePayload,
+            photoFiles,
+            metadata
+        });
+
+        return res.json({
+            ok: true,
+            requestId: req.requestId,
+            message: 'Recibimos tu solicitud. En menos de 24 horas hábiles te vamos a contactar.'
+        });
+    } catch (error) {
+        return next(error);
+    }
+}
+
+app.post('/forms/contacto', contactLimiter, handleContactSubmission);
+app.post('/forms/envios', quoteLimiter, quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
+app.post('/api/contact', contactLimiter, requireAllowedOrigin, handleContactSubmission);
+app.post('/api/quotes', quoteLimiter, requireAllowedOrigin, quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
 
 app.post('/api/mp/create-preference', async (req, res, next) => {
     try {
@@ -393,28 +971,58 @@ app.use('/api', (req, res) => {
 });
 
 app.use((error, req, res, _next) => {
+    const requestId = String(req.requestId || res.locals.requestId || generateRequestId());
+    if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                ok: false,
+                error: `Cada archivo puede pesar hasta ${QUOTE_FILE_MAX_MB} MB.`,
+                requestId
+            });
+        }
+
+        if (error.code === 'LIMIT_FILE_COUNT') {
+            return res.status(400).json({
+                ok: false,
+                error: `Podés adjuntar hasta ${QUOTE_MAX_FILES} archivos.`,
+                requestId
+            });
+        }
+
+        return res.status(400).json({
+            ok: false,
+            error: 'Error al procesar los archivos adjuntos.',
+            requestId
+        });
+    }
+
     if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
-        return res.status(400).json({ ok: false, error: 'JSON inválido en el request body' });
+        return res.status(400).json({ ok: false, error: 'JSON inválido en el request body', requestId });
     }
 
     if (error.name === 'AbortError') {
-        return res.status(504).json({ ok: false, error: 'Timeout al comunicarse con Mercado Pago' });
+        return res.status(504).json({ ok: false, error: 'Timeout al comunicarse con Mercado Pago', requestId });
     }
 
     if (error.message === 'Origen no permitido por CORS') {
-        return res.status(403).json({ ok: false, error: 'Origen no permitido' });
+        return res.status(403).json({ ok: false, error: 'Origen no permitido', requestId });
     }
 
     const status = error.status || 500;
     const payload = {
         ok: false,
         error: status === 500
-            ? 'Error interno del servidor'
-            : error.message
+            ? 'Error interno del servidor. Intenta nuevamente.'
+            : error.message,
+        requestId
     };
 
     if (status === 500 && process.env.NODE_ENV === 'development') {
         payload.details = error.message;
+    }
+
+    if (status >= 500 || !isProduction) {
+        console.error(`[${requestId}] ❌ ${req.method} ${req.originalUrl} -> ${status}: ${error.message}`);
     }
 
     return res.status(status).json(payload);
