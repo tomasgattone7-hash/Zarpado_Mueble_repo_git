@@ -1,3 +1,4 @@
+/api/*  https://api.zarpadomueble.com/api/:splat  200
 http://www.zarpadomueble.com/* https://zarpadomueble.com/:splat 301!
 https://www.zarpadomueble.com/* https://zarpadomueble.com/:splat 301!
 http://zarpadomueble.com/* https://zarpadomueble.com/:splat 301!
