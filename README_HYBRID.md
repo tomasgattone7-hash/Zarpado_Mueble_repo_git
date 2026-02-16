@@ -100,19 +100,18 @@ En `script.js`:
 ### Endpoints
 - `GET /forms/config`: entrega configuración pública de reCAPTCHA (`siteKey`, `version`).
 - `POST /forms/contacto`: formulario de contacto.
-- `POST /forms/envios`: formulario de cotización A Medida.
+- `POST /forms/medida`: formulario de cotización A Medida.
 
 ### Variables de entorno requeridas (Railway)
 Definilas en el servicio backend:
 
 ```bash
-RECAPTCHA_SITE_KEY=
 RECAPTCHA_SECRET=
-RECAPTCHA_VERSION=v3
+RECAPTCHA_VERSION=v2
 RECAPTCHA_MIN_SCORE=0.5
 
-FORMSPREE_CONTACT_ID=
-FORMSPREE_ENVIO_ID=
+FRM_CONTACT_ID=xqedeven
+FRM_MEDIDA_ID=maqdjjkq
 
 FRONTEND_URL=https://zarpadomueble.com
 API_URL=https://api.zarpadomueble.com
@@ -126,10 +125,10 @@ RECAPTCHA_VERIFY_TIMEOUT_MS=8000
 ```
 
 ### Dónde obtener cada valor
-- `FORMSPREE_CONTACT_ID` / `FORMSPREE_ENVIO_ID`:
+- `FRM_CONTACT_ID` / `FRM_MEDIDA_ID`:
   - En Formspree, abrí cada form y copiá el ID de la ruta `f/xxxxxx`.
   - Si tenés un `action` histórico tipo `https://formspree.io/f/xqedeven`, el ID es `xqedeven`.
-- `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET`:
+- `RECAPTCHA_SECRET`:
   - Google reCAPTCHA Admin Console.
   - Registrar dominio `zarpadomueble.com` y `www.zarpadomueble.com`.
   - Para local, agregar `localhost`.

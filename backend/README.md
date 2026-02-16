@@ -7,7 +7,7 @@
 - `GET /health`
 - `GET /forms/config`
 - `POST /forms/contacto`
-- `POST /forms/envios`
+- `POST /forms/medida`
 - Compatibilidad: `POST /api/contact`, `POST /api/quotes`
 
 ## Flujo formularios (AJAX + reCAPTCHA + Formspree)
@@ -28,24 +28,25 @@ FRONTEND_URL=https://zarpadomueble.com
 API_URL=https://api.zarpadomueble.com
 ALLOWED_ORIGINS=https://zarpadomueble.com,https://www.zarpadomueble.com
 
-RECAPTCHA_SITE_KEY=
 RECAPTCHA_SECRET=
-RECAPTCHA_VERSION=v3
+RECAPTCHA_VERSION=v2
 RECAPTCHA_MIN_SCORE=0.5
 
-FORMSPREE_CONTACT_ID=
-FORMSPREE_ENVIO_ID=
+FRM_CONTACT_ID=xqedeven
+FRM_MEDIDA_ID=maqdjjkq
 
 CONTACT_RATE_LIMIT_MAX=10
 QUOTE_RATE_LIMIT_MAX=10
 FORMS_RATE_LIMIT_MAX=10
+CONTACT_RATE_LIMIT_WINDOW_MS=60000
+QUOTE_RATE_LIMIT_WINDOW_MS=60000
 ```
 
 ## Cómo obtener los IDs y keys
 
-- `FORMSPREE_*`:
+- `FRM_*`:
   - Panel de Formspree o del action histórico `https://formspree.io/f/xxxx` (ID = `xxxx`).
-- `RECAPTCHA_SITE_KEY` y `RECAPTCHA_SECRET`:
+- `RECAPTCHA_SECRET`:
   - Google reCAPTCHA Admin Console (mismo dominio del frontend).
 
 ## Prueba rápida local

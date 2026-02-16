@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
-import fetch, { Blob, FormData } from 'node-fetch';
+import fetch from 'node-fetch';
 import crypto from 'node:crypto';
 
 dotenv.config();
@@ -21,20 +21,21 @@ const MAX_CART_ITEMS = Number.parseInt(process.env.MAX_CART_ITEMS, 10) || 20;
 const MAX_ITEM_QUANTITY = Number.parseInt(process.env.MAX_ITEM_QUANTITY, 10) || 10;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
 const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
-const FORMSPREE_CONTACT_ID = String(process.env.FORMSPREE_CONTACT_ID || '').trim();
-const FORMSPREE_ENVIO_ID = String(process.env.FORMSPREE_ENVIO_ID || '').trim();
+const FRM_CONTACT_ID = String(process.env.FRM_CONTACT_ID || process.env.FORMSPREE_CONTACT_ID || '').trim();
+const FRM_MEDIDA_ID = String(process.env.FRM_MEDIDA_ID || process.env.FORMSPREE_ENVIO_ID || '').trim();
 const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
+const RECAPTCHA_V2_SITE_KEY = '6LdjBW4sAAAAAPaYMKU5daLqShZB3Vf4SUJDsq4Y';
 const RECAPTCHA_SECRET = String(process.env.RECAPTCHA_SECRET || '').trim();
-const RECAPTCHA_SITE_KEY = String(process.env.RECAPTCHA_SITE_KEY || '').trim();
-const RECAPTCHA_VERSION = String(process.env.RECAPTCHA_VERSION || 'v3').trim().toLowerCase() === 'v2'
-    ? 'v2'
-    : 'v3';
+const RECAPTCHA_SITE_KEY = String(process.env.RECAPTCHA_SITE_KEY || RECAPTCHA_V2_SITE_KEY).trim();
+const RECAPTCHA_VERSION = String(process.env.RECAPTCHA_VERSION || 'v2').trim().toLowerCase() === 'v3'
+    ? 'v3'
+    : 'v2';
 const RECAPTCHA_MIN_SCORE = Number.parseFloat(process.env.RECAPTCHA_MIN_SCORE || '0.5') || 0.5;
 const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
 const RECAPTCHA_VERIFY_TIMEOUT_MS = Number.parseInt(process.env.RECAPTCHA_VERIFY_TIMEOUT_MS, 10) || 8000;
 const RECAPTCHA_ACTIONS = Object.freeze({
     CONTACTO: 'contacto_submit',
-    ENVIOS: 'envios_submit'
+    MEDIDA: 'medida_submit'
 });
 const QUOTE_MAX_FILES = Number.parseInt(process.env.QUOTE_MAX_FILES, 10) || 6;
 const QUOTE_FILE_MAX_MB = Number.parseInt(process.env.QUOTE_FILE_MAX_MB, 10) || 5;
@@ -87,12 +88,12 @@ function buildFormspreeEndpoint(formId, fallbackEndpoint = '') {
 }
 
 const FORMSPREE_CONTACT_ENDPOINT = buildFormspreeEndpoint(
-    FORMSPREE_CONTACT_ID,
+    FRM_CONTACT_ID,
     LEGACY_CONTACT_FORM_ENDPOINT
 );
-const FORMSPREE_ENVIO_ENDPOINT = buildFormspreeEndpoint(
-    FORMSPREE_ENVIO_ID,
-    FORMSPREE_CONTACT_ENDPOINT
+const FORMSPREE_MEDIDA_ENDPOINT = buildFormspreeEndpoint(
+    FRM_MEDIDA_ID,
+    ''
 );
 
 const defaultAllowedOrigins = [
@@ -328,7 +329,7 @@ async function submitFormspreeJson({ endpoint, payload }) {
     }
 
     if (!response.ok || responsePayload?.ok === false) {
-        throw createApiError('forms_provider_error', 502);
+        throw createApiError('formspree_failed', 502);
     }
 }
 
@@ -570,7 +571,7 @@ const checkoutLimiter = rateLimit({
 });
 
 const contactLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
+    windowMs: Number.parseInt(process.env.CONTACT_RATE_LIMIT_WINDOW_MS, 10) || 60 * 1000,
     max: Number.parseInt(process.env.CONTACT_RATE_LIMIT_MAX, 10) || 10,
     standardHeaders: true,
     legacyHeaders: false,
@@ -581,7 +582,7 @@ const contactLimiter = rateLimit({
 });
 
 const quoteLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
+    windowMs: Number.parseInt(process.env.QUOTE_RATE_LIMIT_WINDOW_MS, 10) || 60 * 1000,
     max: Number.parseInt(process.env.QUOTE_RATE_LIMIT_MAX, 10) || 10,
     standardHeaders: true,
     legacyHeaders: false,
@@ -774,57 +775,41 @@ function validateQuotePayload(rawPayload = {}) {
 
 async function submitQuoteViaFormspree({
     quotePayload,
-    photoFiles,
+    photoMetadata,
     metadata
 }) {
-    if (!FORMSPREE_ENVIO_ENDPOINT) {
+    if (!FORMSPREE_MEDIDA_ENDPOINT) {
         throw createApiError('forms_provider_not_configured', 503);
     }
 
-    const payload = new FormData();
-    payload.set('form_type', 'quote_a_medida');
-    payload.set('full_name', quotePayload.fullName);
-    payload.set('email', quotePayload.email);
-    payload.set('phone', quotePayload.phone);
-    payload.set('city_neighborhood', quotePayload.cityNeighborhood);
-    payload.set('province', quotePayload.province);
-    payload.set('furniture_type', quotePayload.furnitureType);
-    payload.set('approximate_measures', quotePayload.approximateMeasures);
-    payload.set('estimated_budget', quotePayload.estimatedBudget || 'No informado');
-    payload.set('target_date', quotePayload.targetDate || 'No informada');
-    payload.set('additional_comments', quotePayload.additionalComments || 'Sin comentarios');
-    payload.set('files_count', String(photoFiles.length));
-    payload.set('privacy_accepted', 'Sí');
-    payload.set('metadata_ip', metadata.ip || '');
-    payload.set('metadata_user_agent', metadata.userAgent || '');
-    payload.set('metadata_origin', metadata.origin || '');
-    payload.set('metadata_timestamp', metadata.timestamp);
-    payload.set('metadata_request_id', metadata.requestId || '');
-
-    photoFiles.forEach((file, index) => {
-        const filename = normalizeText(file.originalname, 120) || `archivo-${index + 1}`;
-        const mimeType = normalizeText(file.mimetype, 80) || 'application/octet-stream';
-        payload.append('attachment', new Blob([file.buffer], { type: mimeType }), filename);
+    const attachmentsSummary = photoMetadata
+        .map(file => `${file.originalName} (${file.mimeType}, ${file.sizeKb} KB)`)
+        .join(' | ');
+    await submitFormspreeJson({
+        endpoint: FORMSPREE_MEDIDA_ENDPOINT,
+        payload: {
+            page: 'a-medida',
+            form_type: 'quote_a_medida',
+            full_name: quotePayload.fullName,
+            email: quotePayload.email,
+            phone: quotePayload.phone,
+            city_neighborhood: quotePayload.cityNeighborhood,
+            province: quotePayload.province,
+            furniture_type: quotePayload.furnitureType,
+            approximate_measures: quotePayload.approximateMeasures,
+            estimated_budget: quotePayload.estimatedBudget || 'No informado',
+            target_date: quotePayload.targetDate || 'No informada',
+            additional_comments: quotePayload.additionalComments || 'Sin comentarios',
+            files_count: photoMetadata.length,
+            attachments_summary: attachmentsSummary || 'Sin archivos adjuntos',
+            privacy_accepted: 'Sí',
+            metadata_ip: metadata.ip || '',
+            metadata_user_agent: metadata.userAgent || '',
+            metadata_origin: metadata.origin || '',
+            metadata_timestamp: metadata.timestamp,
+            metadata_request_id: metadata.requestId || ''
+        }
     });
-
-    const response = await fetch(FORMSPREE_ENVIO_ENDPOINT, {
-        method: 'POST',
-        headers: {
-            Accept: 'application/json'
-        },
-        body: payload
-    });
-
-    let responsePayload = {};
-    try {
-        responsePayload = await response.json();
-    } catch {
-        responsePayload = {};
-    }
-
-    if (!response.ok || responsePayload?.ok === false) {
-        throw createApiError('forms_provider_error', 502);
-    }
 }
 
 async function handleContactSubmission(req, res, next) {
@@ -841,6 +826,7 @@ async function handleContactSubmission(req, res, next) {
         await submitFormspreeJson({
             endpoint: FORMSPREE_CONTACT_ENDPOINT,
             payload: {
+                page: 'contacto',
                 form_type: 'contacto',
                 name: contactPayload.name,
                 email: contactPayload.email,
@@ -864,7 +850,7 @@ async function handleContactSubmission(req, res, next) {
 
 async function handleQuoteSubmission(req, res, next) {
     try {
-        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.ENVIOS);
+        await assertRecaptchaOrThrow(req, RECAPTCHA_ACTIONS.MEDIDA);
         const quotePayload = validateQuotePayload(req.body || {});
 
         // Honeypot.
@@ -873,10 +859,15 @@ async function handleQuoteSubmission(req, res, next) {
         }
 
         const photoFiles = Array.isArray(req.files) ? req.files : [];
+        const photoMetadata = photoFiles.map(file => ({
+            originalName: normalizeText(file.originalname, 120) || 'archivo',
+            mimeType: normalizeText(file.mimetype, 80) || 'application/octet-stream',
+            sizeKb: Math.max(1, Math.round((Number(file.size) || 0) / 1024))
+        }));
         const metadata = buildFormRequestMetadata(req);
         await submitQuoteViaFormspree({
             quotePayload,
-            photoFiles,
+            photoMetadata,
             metadata
         });
 
@@ -891,6 +882,7 @@ async function handleQuoteSubmission(req, res, next) {
 }
 
 app.post('/forms/contacto', contactLimiter, handleContactSubmission);
+app.post('/forms/medida', quoteLimiter, quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
 app.post('/forms/envios', quoteLimiter, quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
 app.post('/api/contact', contactLimiter, requireAllowedOrigin, handleContactSubmission);
 app.post('/api/quotes', quoteLimiter, requireAllowedOrigin, quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
