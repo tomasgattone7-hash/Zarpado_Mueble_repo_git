@@ -51,7 +51,7 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
-const RECAPTCHA_V2_SITE_KEY = '6LdtDG4sAAAAAMAXYM3oDCZhrM7qP7hsA85KABMM';
+const RECAPTCHA_V2_SITE_KEY = '6LdjBW4sAAAAAPaYMKU5daLqShZB3Vf4SUJDsq4Y';
 const RECAPTCHA_V2_SCRIPT_URL = 'https://www.google.com/recaptcha/api.js?render=explicit';
 let recaptchaScriptLoadPromise = null;
 const recaptchaWidgetIds = {};
@@ -759,6 +759,31 @@ function setContactSubmitInfo(message, type = 'neutral') {
     if (type === 'loading') submitInfo.classList.add('is-loading');
 }
 
+function getRecaptchaErrorMessage(errorCode) {
+    const normalizedCode = String(errorCode || '').trim().toLowerCase();
+    if (!normalizedCode) {
+        return '';
+    }
+
+    if (normalizedCode === 'recaptcha_token_missing') {
+        return 'Confirmá el captcha para continuar.';
+    }
+
+    if (normalizedCode === 'recaptcha_failed') {
+        return 'No pudimos validar el reCAPTCHA. Intentá nuevamente.';
+    }
+
+    if (normalizedCode === 'recaptcha_secret_missing' || normalizedCode === 'recaptcha_not_configured') {
+        return 'El formulario está temporalmente fuera de servicio. Probá nuevamente en unos minutos.';
+    }
+
+    if (normalizedCode === 'recaptcha_verify_unavailable') {
+        return 'No pudimos validar el captcha por un problema de red del servidor. Intentá nuevamente.';
+    }
+
+    return '';
+}
+
 function isValidEmailAddress(email) {
     return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(String(email || '').trim());
 }
@@ -814,7 +839,7 @@ function initContactFormSubmission() {
 
             const recaptchaToken = getRecaptchaToken(contactRecaptchaWidgetId);
             if (!recaptchaToken) {
-                setContactSubmitInfo('Completá el reCAPTCHA para continuar.', 'error');
+                setContactSubmitInfo('Confirmá el captcha para continuar.', 'error');
                 return;
             }
 
@@ -846,14 +871,10 @@ function initContactFormSubmission() {
             }
 
             const responseError = String(responsePayload?.error || '').trim().toLowerCase();
-            if (responseError === 'recaptcha_failed') {
+            const recaptchaErrorMessage = getRecaptchaErrorMessage(responseError);
+            if (recaptchaErrorMessage) {
                 resetRecaptchaWidget(contactRecaptchaWidgetId);
-                setContactSubmitInfo('No pudimos validar el reCAPTCHA. Intentá nuevamente.', 'error');
-                return;
-            }
-
-            if (responseError === 'recaptcha_not_configured') {
-                setContactSubmitInfo('El formulario no está habilitado todavía. Falta configurar reCAPTCHA.', 'error');
+                setContactSubmitInfo(recaptchaErrorMessage, 'error');
                 return;
             }
 
@@ -1218,7 +1239,7 @@ function initQuoteFormSubmission() {
 
             const recaptchaToken = getRecaptchaToken(quoteRecaptchaWidgetId);
             if (!recaptchaToken) {
-                setQuoteSubmitInfo('Completá el reCAPTCHA para continuar.', 'error');
+                setQuoteSubmitInfo('Confirmá el captcha para continuar.', 'error');
                 return;
             }
 
@@ -1247,12 +1268,9 @@ function initQuoteFormSubmission() {
 
             if (!response.ok || payload?.ok === false) {
                 const responseError = String(payload?.error || '').trim().toLowerCase();
-                if (responseError === 'recaptcha_failed') {
-                    throw new Error('No pudimos validar el reCAPTCHA. Intentá nuevamente.');
-                }
-
-                if (responseError === 'recaptcha_not_configured') {
-                    throw new Error('El formulario no está habilitado todavía. Falta configurar reCAPTCHA.');
+                const recaptchaErrorMessage = getRecaptchaErrorMessage(responseError);
+                if (recaptchaErrorMessage) {
+                    throw new Error(recaptchaErrorMessage);
                 }
 
                 throw new Error(payload.error || 'No pudimos enviar la solicitud de cotización.');
