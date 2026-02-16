@@ -5,16 +5,20 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import fetch from 'node-fetch';
+import crypto from 'node:crypto';
 
 dotenv.config();
 
 const app = express();
-const PORT = Number.parseInt(process.env.PORT, 10) || 3001;
+const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const isProduction = process.env.NODE_ENV === 'production';
 
 const MAX_CART_ITEMS = Number.parseInt(process.env.MAX_CART_ITEMS, 10) || 20;
 const MAX_ITEM_QUANTITY = Number.parseInt(process.env.MAX_ITEM_QUANTITY, 10) || 10;
+const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
+const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
+const csrfSessions = new Map();
 
 const PRODUCT_CATALOG = Object.freeze({
     1: { name: 'Escritorio Gamer Pro', price: 185000 },
@@ -31,12 +35,16 @@ const PRODUCT_CATALOG = Object.freeze({
 });
 
 const defaultAllowedOrigins = [
+    'https://zarpadomueble.com',
+    'https://www.zarpadomueble.com',
+    'http://localhost:8888',
+    'http://127.0.0.1:8888',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     BASE_URL
 ];
 
-const allowedOrigins = [
+const configuredAllowedOrigins = [
     ...new Set(
         (process.env.ALLOWED_ORIGINS
             ? process.env.ALLOWED_ORIGINS.split(',')
@@ -46,6 +54,29 @@ const allowedOrigins = [
             .filter(Boolean)
     )
 ];
+
+const allowedOrigins = new Set(configuredAllowedOrigins);
+
+function isNetlifyOrigin(origin) {
+    if (!origin) {
+        return false;
+    }
+
+    try {
+        const parsed = new URL(origin);
+        return parsed.protocol === 'https:' && parsed.hostname.endsWith('.netlify.app');
+    } catch {
+        return false;
+    }
+}
+
+function isAllowedOrigin(origin) {
+    if (!origin) {
+        return true;
+    }
+
+    return allowedOrigins.has(origin) || isNetlifyOrigin(origin);
+}
 
 const trustProxyValue = process.env.TRUST_PROXY;
 const trustProxySetting = trustProxyValue === undefined
@@ -103,14 +134,19 @@ app.use((req, res, next) => {
 
 const corsOptions = {
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (isAllowedOrigin(origin)) {
             return callback(null, true);
         }
+
+        if (!isProduction) {
+            console.warn(`[CORS] Origin bloqueado: ${origin || 'null'}`);
+        }
+
         return callback(new Error('Origen no permitido por CORS'));
     },
     methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type'],
-    credentials: false,
+    allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token'],
+    credentials: true,
     optionsSuccessStatus: 204
 };
 
@@ -119,6 +155,103 @@ app.options('*', cors(corsOptions));
 app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: '16kb', strict: true }));
 app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+
+function parseCookies(cookieHeader = '') {
+    const safeDecode = (value) => {
+        try {
+            return decodeURIComponent(value);
+        } catch {
+            return value;
+        }
+    };
+
+    return cookieHeader
+        .split(';')
+        .map(cookie => cookie.trim())
+        .filter(Boolean)
+        .reduce((acc, cookie) => {
+            const separatorIndex = cookie.indexOf('=');
+            if (separatorIndex < 0) {
+                return acc;
+            }
+
+            const key = safeDecode(cookie.slice(0, separatorIndex).trim());
+            const value = safeDecode(cookie.slice(separatorIndex + 1).trim());
+            acc[key] = value;
+            return acc;
+        }, {});
+}
+
+function getCookieValue(request, key) {
+    const cookies = parseCookies(request.headers?.cookie || '');
+    return cookies[key];
+}
+
+function createRandomToken(bytes = 32) {
+    return crypto.randomBytes(bytes).toString('hex');
+}
+
+function getOrCreateCsrfSession(request, response) {
+    let sessionId = getCookieValue(request, CSRF_SESSION_COOKIE_NAME);
+
+    if (!sessionId || !/^[a-f0-9]{48}$/i.test(sessionId)) {
+        sessionId = createRandomToken(24);
+        response.cookie(CSRF_SESSION_COOKIE_NAME, sessionId, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'none' : 'lax',
+            path: '/'
+        });
+    }
+
+    let csrfToken = csrfSessions.get(sessionId);
+    if (!csrfToken) {
+        csrfToken = createRandomToken(32);
+        csrfSessions.set(sessionId, csrfToken);
+
+        if (csrfSessions.size > MAX_CSRF_SESSIONS) {
+            const oldestSessionId = csrfSessions.keys().next().value;
+            if (oldestSessionId) {
+                csrfSessions.delete(oldestSessionId);
+            }
+        }
+    }
+
+    return { sessionId, csrfToken };
+}
+
+function hasAllowedOrigin(request) {
+    return isAllowedOrigin(request.get('origin'));
+}
+
+function validateCsrf(request, response, next) {
+    if (!hasAllowedOrigin(request)) {
+        if (!isProduction) {
+            console.warn(`[CORS] CSRF bloqueado por origin inválido: ${request.get('origin') || 'null'}`);
+        }
+        return response.status(403).json({ error: 'Origen no permitido' });
+    }
+
+    const sessionId = getCookieValue(request, CSRF_SESSION_COOKIE_NAME);
+    const expectedToken = sessionId ? csrfSessions.get(sessionId) : null;
+    const headerToken = request.get('x-csrf-token');
+    const bodyToken = typeof request.body?.csrf_token === 'string'
+        ? request.body.csrf_token
+        : null;
+    const providedToken = String(headerToken || bodyToken || '').trim();
+
+    if (!sessionId || !expectedToken || !providedToken || expectedToken !== providedToken) {
+        return response.status(403).json({ error: 'Token CSRF inválido o ausente' });
+    }
+
+    return next();
+}
+
+app.use((request, response, next) => {
+    const { csrfToken } = getOrCreateCsrfSession(request, response);
+    response.locals.csrfToken = csrfToken;
+    next();
+});
 
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -141,7 +274,14 @@ const checkoutLimiter = rateLimit({
 });
 
 app.use('/api/', apiLimiter);
-app.use('/api/mp/create-preference', checkoutLimiter);
+app.get('/api/csrf-token', (request, response) => {
+    if (!hasAllowedOrigin(request)) {
+        return response.status(403).json({ error: 'Origen no permitido' });
+    }
+
+    return response.json({ csrfToken: response.locals.csrfToken });
+});
+app.use('/api/mp/create-preference', checkoutLimiter, validateCsrf);
 
 if (!process.env.MP_ACCESS_TOKEN) {
     console.error('❌ ERROR CRÍTICO: MP_ACCESS_TOKEN no está configurado en .env');
@@ -256,19 +396,11 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
 });
 
 app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        mp_configured: Boolean(process.env.MP_ACCESS_TOKEN),
-        allowed_origins: allowedOrigins,
-        timestamp: new Date().toISOString()
-    });
+    res.json({ ok: true });
 });
 
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString()
-    });
+    res.json({ ok: true });
 });
 
 app.use('/api', (req, res) => {
@@ -302,10 +434,11 @@ app.use((error, req, res, _next) => {
     return res.status(status).json(payload);
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor corriendo en puerto ${PORT}`);
     console.log(`\n🚀 Backend corriendo en http://localhost:${PORT}`);
     console.log(`💳 Mercado Pago Access Token: ${process.env.MP_ACCESS_TOKEN ? '✅ Configurado' : '❌ NO configurado'}`);
-    console.log(`🛡️ CORS permitido para: ${allowedOrigins.join(', ')}`);
+    console.log(`🛡️ CORS permitido para: ${Array.from(allowedOrigins).join(', ')} (+ *.netlify.app)`);
     console.log(`🔗 Base URL: ${BASE_URL}`);
     console.log(`\n📍 Endpoint: POST http://localhost:${PORT}/api/mp/create-preference\n`);
 });

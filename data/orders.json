@@ -563,6 +563,60 @@
       },
       "customerData": null,
       "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771248445990-37999C",
+      "externalReference": "ORDER_1771248445990_FD3FFA",
+      "createdAt": "2026-02-16T13:27:27.260Z",
+      "updatedAt": "2026-02-16T13:27:27.260Z",
+      "preferenceId": "3202898734-e0ca54c0-6ca9-42ac-9d4d-efa3ce712ce3",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nórdico",
+          "description": "Vajillero Nórdico",
+          "quantity": 1,
+          "unit_price": 230000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 230000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 285000
+      },
+      "buyerEmail": "",
+      "customerData": null,
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-e0ca54c0-6ca9-42ac-9d4d-efa3ce712ce3",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771248445990_FD3FFA"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-e0ca54c0-6ca9-42ac-9d4d-efa3ce712ce3",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      }
     }
   ]
 }

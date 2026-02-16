@@ -17,8 +17,6 @@
     --color-glow: rgba(141, 110, 99, 0.28);
     --color-input-bg: #ffffff;
     --color-on-accent: #ffffff;
-    --logo-ui-url: url('assets/logo_negro.svg');
-    --logo-content-url: url('assets/logo-negrop.png');
     --font-heading: 'Playfair Display', serif;
     --font-body: 'Lato', sans-serif;
     --transition-slow: 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -46,8 +44,6 @@
     --color-glow: rgba(141, 110, 99, 0.45);
     --color-input-bg: var(--color-bg-secondary);
     --color-on-accent: #ffffff;
-    --logo-ui-url: url('assets/logo_blanco.svg');
-    --logo-content-url: url('assets/logo-blancop.png');
 }
 
 /* --- Reset & Base --- */
@@ -223,17 +219,17 @@ img {
     justify-content: center;
     width: clamp(120px, 12vw, 168px);
     height: clamp(32px, 4vw, 42px);
-    background-image: var(--logo-ui-url);
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center;
-    text-indent: -9999px;
-    overflow: hidden;
-    white-space: nowrap;
     border: 0;
     padding: 0;
     line-height: 1;
     justify-self: start;
+}
+
+.logo-dinamico {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .logo-content {

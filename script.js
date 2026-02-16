@@ -316,7 +316,7 @@ async function getCsrfToken(forceRefresh = false) {
     const response = await fetch('/api/csrf-token', {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        credentials: 'same-origin'
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -396,6 +396,7 @@ function initContactFormSubmission() {
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken
                 },
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
 
@@ -935,7 +936,8 @@ async function loadDeliveryOptions() {
     try {
         const response = await fetch('/api/delivery/options', {
             method: 'GET',
-            headers: { Accept: 'application/json' }
+            headers: { Accept: 'application/json' },
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -968,7 +970,8 @@ async function requestShippingQuote(postalCode) {
     try {
         const response = await fetch(`/api/delivery/quote?postalCode=${encodeURIComponent(postalCode)}`, {
             method: 'GET',
-            headers: { Accept: 'application/json' }
+            headers: { Accept: 'application/json' },
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -1327,6 +1330,7 @@ async function checkout(currentEvent = null) {
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     items,
                     delivery: buildDeliveryPayload()

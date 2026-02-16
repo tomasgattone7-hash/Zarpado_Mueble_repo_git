@@ -61,6 +61,15 @@ Deberías ver:
 3. Clic en **"Iniciar Compra"**
 4. Deberías ser redirigido a Mercado Pago
 
+### API relativa y proxy (`/api/...`)
+
+- El front está configurado para consumir siempre rutas relativas (`/api/...`), sin hardcodear dominio del backend.
+- En local, `npm start` sirve frontend + API en el mismo origen (`http://localhost:3000`), por eso `/api/...` funciona sin cambios.
+- Si querés emular Netlify redirects localmente, podés usar `netlify dev` apuntando al backend local:
+  ```bash
+  netlify dev --targetPort 3000
+  ```
+
 ### 6. Probar Pagos con Tarjetas de Prueba
 
 Usar las [tarjetas de prueba oficiales](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/additional-content/test-cards):

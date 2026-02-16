@@ -53,12 +53,14 @@ async function loadOrderData() {
     if (orderRef) {
         response = await fetch(`/api/orders/${encodeURIComponent(orderRef)}`, {
             method: 'GET',
-            headers: { Accept: 'application/json' }
+            headers: { Accept: 'application/json' },
+            credentials: 'include'
         });
     } else if (preferenceId) {
         response = await fetch(`/api/orders/by-preference/${encodeURIComponent(preferenceId)}`, {
             method: 'GET',
-            headers: { Accept: 'application/json' }
+            headers: { Accept: 'application/json' },
+            credentials: 'include'
         });
     } else {
         throw new Error('No recibimos un número de pedido válido. Revisá el enlace de pago.');
@@ -178,6 +180,7 @@ async function submitDeliveryData(event, orderData) {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
             },
+            credentials: 'include',
             body: JSON.stringify(payload)
         });
 

@@ -16,9 +16,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/svg+xml" href="/assets/logo_negro.svg">
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/logo-negrop.png">
-    <link rel="apple-touch-icon" href="/assets/logo-negrop.png">
+<link rel="icon" type="image/x-icon" href="/assets/favicon/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+<link rel="apple-touch-icon" href="/assets/favicon/apple-touch-icon.png">
+<link rel="manifest" href="/assets/favicon/site.webmanifest">
+<meta name="theme-color" content="#000000">
 </head>
 
 <body>
@@ -26,7 +29,7 @@
     <!-- Navigation -->
     <header class="navbar">
         <div class="container navbar-container">
-            <a href="index.html" class="logo">Z.</a>
+            <a href="index.html" class="logo"><img class="logo-dinamico" src="/assets/favicon/apple-touch-icon.png?v=2" alt="Zarpado Mueble"></a>
             <nav class="nav-menu">
                 <ul>
                     <li><a href="index.html" class="nav-link">Inicio</a></li>
@@ -161,7 +164,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
-                    <a href="index.html" class="logo">Z.</a>
+                    <a href="index.html" class="logo"><img class="logo-dinamico" src="/assets/favicon/apple-touch-icon.png?v=2" alt="Zarpado Mueble"></a>
                     <p style="color: var(--color-text-muted); margin-top: 10px; font-size: 0.9rem;">Diseño y calidad sin
                         concesiones.</p>
                 </div>
@@ -198,6 +201,7 @@
     </footer>
 
     <script src="script.js"></script>
+    <script src="js/logo-theme.js" defer></script>
 </body>
 
 </html>
