@@ -1,35 +1,50 @@
 {
-    "name": "zarpadomueble-mp-backend",
-    "version": "1.0.0",
-    "description": "Backend seguro para Mercado Pago Checkout Pro",
-    "type": "module",
-    "main": "server.js",
-    "scripts": {
-        "start": "node server.js",
-        "dev": "nodemon server.js",
-        "audit": "npm audit --audit-level=moderate",
-        "lint": "eslint \"server.js\"",
-        "test": "npm run lint"
-    },
-    "keywords": [
-        "mercadopago",
-        "checkout-pro",
-        "express"
-    ],
-    "author": "",
-    "license": "ISC",
-    "dependencies": {
-        "compression": "^1.7.5",
-        "cors": "^2.8.5",
-        "dotenv": "^16.3.1",
-        "express": "^4.18.2",
-        "express-rate-limit": "^7.5.1",
-        "helmet": "^8.1.0",
-        "multer": "^2.0.2",
-        "node-fetch": "^3.3.2"
-    },
-    "devDependencies": {
-        "eslint": "^9.19.0",
-        "nodemon": "^3.0.1"
-    }
+  "name": "zarpadomueble-backend",
+  "version": "1.0.0",
+  "description": "Backend API para Zarpado Mueble (Railway)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "lint": "eslint --no-warn-ignored \"server.js\" \"../frontend/js/script.js\" \"../frontend/js/admin-panel.js\" \"../frontend/js/confirmacion.js\" \"../frontend/js/datos-envio.js\" \"../frontend/js/estado-pedido.js\" \"../frontend/js/logo-theme.js\" \"../frontend/js/site-shell.js\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"../frontend/**/*.{html,css,js,json,md}\" \"../*.{md,toml}\" \"scripts/**/*.mjs\"",
+    "smoke": "node scripts/smoke-test.mjs",
+    "test": "npm run smoke",
+    "optimize:images": "node scripts/optimize-images.mjs",
+    "images:responsive": "node scripts/generate-responsive-images.mjs",
+    "build:js": "terser ../frontend/js/script.js -c -m -o ../frontend/js/script.min.js && terser ../frontend/js/confirmacion.js -c -m -o ../frontend/js/confirmacion.min.js && terser ../frontend/js/datos-envio.js -c -m -o ../frontend/js/datos-envio.min.js && terser ../frontend/js/logo-theme.js -c -m -o ../frontend/js/logo-theme.min.js && terser ../frontend/js/site-shell.js -c -m -o ../frontend/js/site-shell.min.js",
+    "build:css": "cleancss -o ../frontend/css/styles.min.css ../frontend/css/styles.css",
+    "audit": "npm audit --audit-level=moderate"
+  },
+  "keywords": [
+    "mercadopago",
+    "ecommerce",
+    "checkout"
+  ],
+  "author": "Zarpado Mueble",
+  "license": "ISC",
+  "dependencies": {
+    "compression": "^1.7.5",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.1.0",
+    "mercadopago": "^2.0.9",
+    "multer": "^2.0.2",
+    "nodemailer": "^6.10.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "clean-css-cli": "^5.6.3",
+    "eslint": "^9.19.0",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.5.2",
+    "sharp": "^0.34.5",
+    "terser": "^5.46.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
