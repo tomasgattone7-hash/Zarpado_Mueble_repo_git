@@ -106,7 +106,7 @@ En `script.js`:
 Definilas en el servicio backend:
 
 ```bash
-FRM_CONTACT_ID=xqedeven
+FRM_CONTACT_ID=maqdjjkq
 FRM_MEDIDA_ID=maqdjjkq
 
 FRONTEND_URL=https://zarpadomueble.com
@@ -122,7 +122,7 @@ FORMS_RATE_LIMIT_MAX=10
 ### Dónde obtener cada valor
 - `FRM_CONTACT_ID` / `FRM_MEDIDA_ID`:
   - En Formspree, abrí cada form y copiá el ID de la ruta `f/xxxxxx`.
-  - Si tenés un `action` histórico tipo `https://formspree.io/f/xqedeven`, el ID es `xqedeven`.
+  - Si tenés un `action` histórico tipo `https://formspree.io/f/maqdjjkq`, el ID es `maqdjjkq`.
 
 ### Prueba rápida local
 Con backend levantado en `localhost:3000`:

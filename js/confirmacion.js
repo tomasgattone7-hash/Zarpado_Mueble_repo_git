@@ -3,24 +3,33 @@ const CART_STORAGE_KEY = 'zarpadoCart';
 const PHONE_PATTERN = /^[0-9+()\-\s]{6,40}$/;
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const POSTAL_CODE_PATTERN = /^\d{4}$/;
-const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const PROD_API_BASE_URL = '';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
+const DEFAULT_FETCH_TIMEOUT_MS = 12000;
+
+function normalizeApiBaseUrl(value) {
+    return String(value || '').trim().replace(/\/+$/, '');
+}
 
 function resolveApiBaseUrl() {
     if (typeof window === 'undefined' || !window.location) {
-        return PROD_API_BASE_URL;
+        return normalizeApiBaseUrl(PROD_API_BASE_URL);
     }
 
     if (typeof window.ZM_API_BASE_URL === 'string' && window.ZM_API_BASE_URL.trim()) {
-        return window.ZM_API_BASE_URL.trim();
+        return normalizeApiBaseUrl(window.ZM_API_BASE_URL);
     }
 
     const hostname = String(window.location.hostname || '').toLowerCase();
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
-        return LOCAL_API_BASE_URL;
+        return normalizeApiBaseUrl(LOCAL_API_BASE_URL);
     }
 
-    return PROD_API_BASE_URL;
+    if (window.location.protocol === 'file:') {
+        return normalizeApiBaseUrl(LOCAL_API_BASE_URL);
+    }
+
+    return normalizeApiBaseUrl(PROD_API_BASE_URL);
 }
 
 function buildApiUrl(path) {
@@ -42,7 +51,33 @@ function buildApiUrl(path) {
         ? normalizedPath
         : `/${normalizedPath}`;
 
+    if (!baseUrl) {
+        return pathWithSlash;
+    }
+
     return `${baseUrl}${pathWithSlash}`;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS) {
+    if (typeof AbortController === 'undefined') {
+        return fetch(url, options);
+    }
+
+    const controller = new AbortController();
+    const timerId = window.setTimeout(() => {
+        controller.abort();
+    }, timeoutMs);
+
+    const mergedOptions = {
+        ...options,
+        signal: controller.signal
+    };
+
+    try {
+        return await fetch(url, mergedOptions);
+    } finally {
+        window.clearTimeout(timerId);
+    }
 }
 
 const confirmState = {
@@ -95,6 +130,11 @@ function getStoredCart() {
     return parsed;
 }
 
+function parseCartInteger(value) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) ? parsed : null;
+}
+
 function sanitizeCart(items) {
     if (!Array.isArray(items)) {
         return [];
@@ -102,20 +142,18 @@ function sanitizeCart(items) {
 
     return items
         .map(item => ({
-            id: Number.parseInt(item?.id, 10),
-            name: String(item?.name || '').trim(),
-            price: Number.parseInt(item?.price, 10),
-            quantity: Number.parseInt(item?.quantity, 10),
+            id: parseCartInteger(item?.id ?? item?.productId ?? item?.itemId),
+            name: String(item?.name || item?.title || item?.productName || '').trim(),
+            price: parseCartInteger(item?.price ?? item?.unit_price ?? item?.unitPrice),
+            quantity: parseCartInteger(item?.quantity ?? item?.qty ?? item?.cantidad),
             image: String(item?.image || '').trim()
         }))
         .filter(item => (
             Number.isInteger(item.id)
             && item.id > 0
-            && item.name
-            && Number.isInteger(item.price)
-            && item.price >= 0
             && Number.isInteger(item.quantity)
             && item.quantity > 0
+            && item.quantity <= 10
         ));
 }
 
@@ -130,15 +168,26 @@ function getStoredShippingData() {
     }
 }
 
+function buildLegacyAddressLine(data) {
+    return [
+        String(data?.street || '').trim(),
+        String(data?.streetNumber || '').trim()
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+}
+
 function getMissingShippingFields(data) {
+    const legacyAddressLine = buildLegacyAddressLine(data);
     const normalized = {
-        fullName: String(data?.fullName || '').trim(),
+        fullName: String(data?.fullName || data?.name || '').trim(),
         email: String(data?.email || '').trim().toLowerCase(),
         phone: String(data?.phone || '').trim(),
-        addressLine: String(data?.addressLine || '').trim(),
-        city: String(data?.city || '').trim(),
+        addressLine: String(data?.addressLine || legacyAddressLine || '').trim(),
+        city: String(data?.city || data?.cityNeighborhood || '').trim(),
         province: String(data?.province || '').trim(),
-        postalCode: normalizePostalCode(data?.postalCode)
+        postalCode: normalizePostalCode(data?.postalCode || data?.zip)
     };
 
     const missing = [];
@@ -258,8 +307,95 @@ function renderShippingLabel(labelText) {
     label.textContent = labelText;
 }
 
+let catalogMapPromise = null;
+
+async function getCatalogMap() {
+    if (catalogMapPromise) {
+        return catalogMapPromise;
+    }
+
+    catalogMapPromise = (async () => {
+        const response = await fetchWithTimeout(buildApiUrl('/api/store/catalog'), {
+            method: 'GET',
+            headers: { Accept: 'application/json' }
+        }, 12000);
+
+        let payload = {};
+        try {
+            payload = await response.json();
+        } catch {
+            payload = {};
+        }
+
+        const products = Array.isArray(payload?.products) ? payload.products : [];
+        return products.reduce((acc, product) => {
+            const id = parseCartInteger(product?.id);
+            if (!Number.isInteger(id) || id <= 0) {
+                return acc;
+            }
+
+            acc[id] = {
+                name: String(product?.name || '').trim(),
+                image: String(product?.image || '').trim(),
+                price: parseCartInteger(product?.price)
+            };
+            return acc;
+        }, {});
+    })();
+
+    try {
+        return await catalogMapPromise;
+    } catch {
+        catalogMapPromise = null;
+        return {};
+    }
+}
+
+async function hydrateCartItems(items) {
+    const normalizedItems = Array.isArray(items) ? items : [];
+    if (normalizedItems.length === 0) {
+        return [];
+    }
+
+    const needsCatalogFallback = normalizedItems.some(item => (
+        !item.name
+        || !Number.isInteger(item.price)
+        || item.price < 0
+    ));
+
+    if (!needsCatalogFallback) {
+        return normalizedItems;
+    }
+
+    const catalogMap = await getCatalogMap();
+    return normalizedItems
+        .map(item => {
+            const catalogItem = catalogMap[item.id] || {};
+            const name = String(item.name || catalogItem.name || '').trim();
+            const priceCandidate = Number.isInteger(item.price) ? item.price : catalogItem.price;
+            const price = parseCartInteger(priceCandidate);
+
+            return {
+                ...item,
+                name,
+                price,
+                image: String(item.image || catalogItem.image || '').trim()
+            };
+        })
+        .filter(item => (
+            Number.isInteger(item.id)
+            && item.id > 0
+            && item.name
+            && Number.isInteger(item.price)
+            && item.price >= 0
+            && Number.isInteger(item.quantity)
+            && item.quantity > 0
+            && item.quantity <= 10
+        ));
+}
+
 async function requestShippingQuote(postalCode, items) {
-    const quoteResponse = await fetch(buildApiUrl('/api/delivery/quote'), {
+    const quoteResponse = await fetchWithTimeout(buildApiUrl('/api/delivery/quote'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -273,7 +409,7 @@ async function requestShippingQuote(postalCode, items) {
                 unit_price: item.price
             }))
         })
-    });
+    }, 12000);
 
     let payload = {};
     try {
@@ -371,14 +507,14 @@ async function handleConfirmAndPay() {
     setConfirmFeedback('Creando orden de pago segura...', 'loading');
 
     try {
-        const response = await fetch(buildApiUrl('/api/mp/create-preference'), {
+        const response = await fetchWithTimeout(buildApiUrl('/api/mp/create-preference'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json'
             },
             body: JSON.stringify(buildCheckoutPayload())
-        });
+        }, 15000);
 
         let payload = {};
         try {
@@ -403,7 +539,13 @@ async function handleConfirmAndPay() {
             window.location.href = initPoint;
         }, 250);
     } catch (error) {
-        setConfirmFeedback(error.message || 'No pudimos iniciar el pago en este momento.', 'error');
+        const fallbackMessage = error?.name === 'AbortError'
+            ? 'El servidor demoró en responder. Probá nuevamente.'
+            : 'No pudimos iniciar el pago en este momento.';
+        const message = error?.name === 'AbortError'
+            ? fallbackMessage
+            : (error?.message || fallbackMessage);
+        setConfirmFeedback(message, 'error');
         disablePayButton(false, 'Confirmar y pagar');
         confirmState.processing = false;
     }
@@ -416,13 +558,13 @@ function redirectWithDelay(url, message) {
     }, 1200);
 }
 
-function initConfirmationStep() {
+async function initConfirmationStep() {
     const path = String(window.location.pathname || '').toLowerCase();
     if (!path.includes('confirmacion')) {
         return;
     }
 
-    confirmState.cart = sanitizeCart(getStoredCart());
+    confirmState.cart = await hydrateCartItems(sanitizeCart(getStoredCart()));
     if (confirmState.cart.length === 0) {
         redirectWithDelay('/tienda', 'Tu carrito está vacío. Te llevamos a la tienda.');
         return;
@@ -455,7 +597,13 @@ function initConfirmationStep() {
         .catch(error => {
             renderTotals(subtotal, null);
             renderShippingLabel('No pudimos calcular el envío automáticamente para este CP.');
-            setConfirmFeedback(error.message || 'No pudimos calcular el envío.', 'error');
+            const fallbackMessage = error?.name === 'AbortError'
+                ? 'La cotización tardó demasiado. Verificá tu conexión y reintentá.'
+                : 'No pudimos calcular el envío.';
+            const message = error?.name === 'AbortError'
+                ? fallbackMessage
+                : (error?.message || fallbackMessage);
+            setConfirmFeedback(message, 'error');
             disablePayButton(true, 'Confirmar y pagar');
         });
 
@@ -468,4 +616,8 @@ function initConfirmationStep() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', initConfirmationStep);
+document.addEventListener('DOMContentLoaded', () => {
+    initConfirmationStep().catch(() => {
+        redirectWithDelay('/tienda', 'No pudimos cargar la confirmación. Te llevamos a la tienda.');
+    });
+});

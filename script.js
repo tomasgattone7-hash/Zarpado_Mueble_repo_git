@@ -34,20 +34,33 @@ const THEME_STORAGE_KEY = 'zm_theme';
 const LIGHT_THEME = 'light';
 const DARK_THEME = 'dark';
 const THEME_MEDIA_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
-const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const PROD_API_BASE_URL = '';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
+const DEFAULT_FETCH_TIMEOUT_MS = 12000;
+
+function normalizeApiBaseUrl(value) {
+    return String(value || '').trim().replace(/\/+$/, '');
+}
 
 function resolveApiBaseUrl() {
     if (typeof window === 'undefined' || !window.location) {
-        return PROD_API_BASE_URL;
+        return normalizeApiBaseUrl(PROD_API_BASE_URL);
+    }
+
+    if (typeof window.ZM_API_BASE_URL === 'string' && window.ZM_API_BASE_URL.trim()) {
+        return normalizeApiBaseUrl(window.ZM_API_BASE_URL);
     }
 
     const hostname = String(window.location.hostname || '').toLowerCase();
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
-        return LOCAL_API_BASE_URL;
+        return normalizeApiBaseUrl(LOCAL_API_BASE_URL);
     }
 
-    return PROD_API_BASE_URL;
+    if (window.location.protocol === 'file:') {
+        return normalizeApiBaseUrl(LOCAL_API_BASE_URL);
+    }
+
+    return normalizeApiBaseUrl(PROD_API_BASE_URL);
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
@@ -66,7 +79,33 @@ function buildApiUrl(path) {
         ? normalizedPath
         : `/${normalizedPath}`;
 
+    if (!API_BASE_URL) {
+        return pathWithSlash;
+    }
+
     return `${API_BASE_URL}${pathWithSlash}`;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS) {
+    if (typeof AbortController === 'undefined') {
+        return fetch(url, options);
+    }
+
+    const controller = new AbortController();
+    const timerId = window.setTimeout(() => {
+        controller.abort();
+    }, timeoutMs);
+
+    const mergedOptions = {
+        ...options,
+        signal: controller.signal
+    };
+
+    try {
+        return await fetch(url, mergedOptions);
+    } finally {
+        window.clearTimeout(timerId);
+    }
 }
 
 if (typeof window !== 'undefined') {
@@ -557,7 +596,7 @@ function normalizeStoreProductFromApi(product) {
 
 async function loadStoreConfig() {
     try {
-        const response = await fetch(buildApiUrl('/api/store/config'), {
+        const response = await fetchWithTimeout(buildApiUrl('/api/store/config'), {
             method: 'GET',
             headers: { Accept: 'application/json' }
         });
@@ -593,7 +632,7 @@ async function loadStoreConfig() {
 async function loadStoreCatalog() {
     try {
         await loadStoreConfig();
-        const response = await fetch(buildApiUrl('/api/store/catalog'), {
+        const response = await fetchWithTimeout(buildApiUrl('/api/store/catalog'), {
             method: 'GET',
             headers: { Accept: 'application/json' }
         });
@@ -721,14 +760,14 @@ function initContactFormSubmission() {
 
         try {
             const payload = Object.fromEntries(formData.entries());
-            const response = await fetch(buildApiUrl('/forms/contacto'), {
+            const response = await fetchWithTimeout(buildApiUrl('/forms/contacto'), {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
-            });
+            }, 15000);
 
             let responsePayload = {};
             try {
@@ -748,7 +787,13 @@ function initContactFormSubmission() {
                 'error'
             );
         } catch (error) {
-            setContactSubmitInfo(error.message || 'Error al enviar. Intentá nuevamente.', 'error');
+            const fallbackMessage = error?.name === 'AbortError'
+                ? 'El servidor demoró en responder. Intentá nuevamente.'
+                : 'Error al enviar. Intentá nuevamente.';
+            const message = error?.name === 'AbortError'
+                ? fallbackMessage
+                : (error?.message || fallbackMessage);
+            setContactSubmitInfo(message, 'error');
         } finally {
             isSubmitting = false;
             setContactSubmittingState(false);
@@ -1095,13 +1140,13 @@ function initQuoteFormSubmission() {
                 payloadFormData.append('photos', file, file.name);
             });
 
-            const response = await fetch(buildApiUrl('/forms/medida'), {
+            const response = await fetchWithTimeout(buildApiUrl('/forms/medida'), {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json'
                 },
                 body: payloadFormData
-            });
+            }, 20000);
 
             let payload = {};
             try {
@@ -1122,7 +1167,13 @@ function initQuoteFormSubmission() {
                 'success'
             );
         } catch (error) {
-            setQuoteSubmitInfo(error.message || 'No pudimos enviar la solicitud de cotización.', 'error');
+            const fallbackMessage = error?.name === 'AbortError'
+                ? 'El servidor demoró en responder. Intentá nuevamente.'
+                : 'No pudimos enviar la solicitud de cotización.';
+            const message = error?.name === 'AbortError'
+                ? fallbackMessage
+                : (error?.message || fallbackMessage);
+            setQuoteSubmitInfo(message, 'error');
         } finally {
             isSubmitting = false;
             setQuoteSubmittingState(false);
@@ -1766,7 +1817,7 @@ function resetShippingState() {
 
 async function loadDeliveryOptions() {
     try {
-        const response = await fetch(buildApiUrl('/api/delivery/options'), {
+        const response = await fetchWithTimeout(buildApiUrl('/api/delivery/options'), {
             method: 'GET',
             headers: { Accept: 'application/json' },
             credentials: 'include'
@@ -1808,7 +1859,7 @@ async function requestShippingQuote(postalCode) {
             id: item.id,
             quantity: item.quantity
         }));
-        const response = await fetch(buildApiUrl('/api/delivery/quote'), {
+        const response = await fetchWithTimeout(buildApiUrl('/api/delivery/quote'), {
             method: 'POST',
             headers: {
                 Accept: 'application/json',
@@ -1818,7 +1869,7 @@ async function requestShippingQuote(postalCode) {
                 postalCode,
                 items
             })
-        });
+        }, 12000);
 
         const data = await response.json();
         if (requestSequence !== shippingQuoteRequestSequence) {

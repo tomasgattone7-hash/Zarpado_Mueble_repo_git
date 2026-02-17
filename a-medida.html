@@ -29,6 +29,7 @@
     </noscript>
     <link rel="stylesheet" href="styles.min.css">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/favicon/favicon-48x48.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
     <link rel="apple-touch-icon" href="/assets/favicon/apple-touch-icon.png">
@@ -133,7 +134,7 @@
                 <form id="form-medida" novalidate enctype="multipart/form-data">
                     <div style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
                         <label for="quote-company">Empresa</label>
-                        <input id="quote-company" type="text" name="company" tabindex="-1" autocomplete="organization">
+                        <input id="quote-company" type="text" name="company" tabindex="-1" autocomplete="off" data-lpignore="true">
                     </div>
 
                     <div class="shipping-data-grid">

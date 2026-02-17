@@ -1,22 +1,30 @@
 const ADMIN_TOKEN_STORAGE_KEY = 'zm_admin_panel_token';
-const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const PROD_API_BASE_URL = '';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
+
+function normalizeApiBaseUrl(value) {
+    return String(value || '').trim().replace(/\/+$/, '');
+}
 
 function resolveAdminApiBaseUrl() {
     if (typeof window === 'undefined' || !window.location) {
-        return PROD_API_BASE_URL;
+        return normalizeApiBaseUrl(PROD_API_BASE_URL);
     }
 
     if (typeof window.ZM_API_BASE_URL === 'string' && window.ZM_API_BASE_URL.trim()) {
-        return window.ZM_API_BASE_URL.trim();
+        return normalizeApiBaseUrl(window.ZM_API_BASE_URL);
     }
 
     const hostname = String(window.location.hostname || '').toLowerCase();
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
-        return LOCAL_API_BASE_URL;
+        return normalizeApiBaseUrl(LOCAL_API_BASE_URL);
     }
 
-    return PROD_API_BASE_URL;
+    if (window.location.protocol === 'file:') {
+        return normalizeApiBaseUrl(LOCAL_API_BASE_URL);
+    }
+
+    return normalizeApiBaseUrl(PROD_API_BASE_URL);
 }
 
 function buildAdminApiUrl(path) {
@@ -37,6 +45,10 @@ function buildAdminApiUrl(path) {
     const pathWithSlash = normalizedPath.startsWith('/')
         ? normalizedPath
         : `/${normalizedPath}`;
+
+    if (!baseUrl) {
+        return pathWithSlash;
+    }
 
     return `${baseUrl}${pathWithSlash}`;
 }

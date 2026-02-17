@@ -22,8 +22,18 @@ const isProduction = process.env.NODE_ENV === 'production';
 const forceHttps = process.env.FORCE_HTTPS === 'true' || isProduction;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
 const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
-const FRM_CONTACT_ID = String(process.env.FRM_CONTACT_ID || process.env.FORMSPREE_CONTACT_ID || '').trim();
-const FRM_MEDIDA_ID = String(process.env.FRM_MEDIDA_ID || process.env.FORMSPREE_ENVIO_ID || '').trim();
+const DEFAULT_FRM_CONTACT_ID = 'maqdjjkq';
+const DEFAULT_FRM_MEDIDA_ID = 'maqdjjkq';
+const FRM_CONTACT_ID = String(
+    process.env.FRM_CONTACT_ID
+    || process.env.FORMSPREE_CONTACT_ID
+    || DEFAULT_FRM_CONTACT_ID
+).trim();
+const FRM_MEDIDA_ID = String(
+    process.env.FRM_MEDIDA_ID
+    || process.env.FORMSPREE_ENVIO_ID
+    || DEFAULT_FRM_MEDIDA_ID
+).trim();
 const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
 const DELIVERY_CONFIG_PATH = path.resolve(__dirname, 'config', 'delivery-config.json');
 const COMMERCE_CONFIG_PATH = path.resolve(__dirname, 'config', 'commerce-config.json');
@@ -463,7 +473,10 @@ async function submitFormspreeJson({ endpoint, payload }) {
     }
 
     if (!response.ok || responsePayload?.ok === false) {
-        throw createApiError('formspree_failed', 502);
+        const error = createApiError('formspree_failed', 502);
+        error.providerError = String(responsePayload?.error || '').trim();
+        error.providerStatus = response.status;
+        throw error;
     }
 
     return responsePayload;
@@ -3394,12 +3407,36 @@ async function submitContactViaFormspree({
         metadata_request_id: metadata.requestId || ''
     };
 
-    await submitFormspreeJson({
-        endpoint: FORMSPREE_CONTACT_ENDPOINT,
-        payload
-    });
+    const endpoints = Array.from(new Set([
+        String(FORMSPREE_CONTACT_ENDPOINT || '').trim(),
+        String(FORMSPREE_MEDIDA_ENDPOINT || '').trim()
+    ].filter(Boolean)));
 
-    return 'formspree';
+    if (endpoints.length === 0) {
+        throw createApiError('forms_provider_not_configured', 503);
+    }
+
+    let lastError = null;
+    for (const endpoint of endpoints) {
+        try {
+            await submitFormspreeJson({
+                endpoint,
+                payload
+            });
+            return 'formspree';
+        } catch (error) {
+            lastError = error;
+            if (!isProduction) {
+                const providerStatus = Number.parseInt(error?.providerStatus, 10);
+                const providerError = String(error?.providerError || '').trim();
+                console.warn(
+                    `[forms] Contacto fallback: endpoint rechazado (${providerStatus || 'n/a'}) ${providerError}`
+                );
+            }
+        }
+    }
+
+    throw lastError || createApiError('formspree_failed', 502);
 }
 
 async function submitQuoteViaFormspree({

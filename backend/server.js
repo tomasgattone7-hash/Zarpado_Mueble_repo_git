@@ -21,8 +21,18 @@ const MAX_CART_ITEMS = Number.parseInt(process.env.MAX_CART_ITEMS, 10) || 20;
 const MAX_ITEM_QUANTITY = Number.parseInt(process.env.MAX_ITEM_QUANTITY, 10) || 10;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
 const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
-const FRM_CONTACT_ID = String(process.env.FRM_CONTACT_ID || process.env.FORMSPREE_CONTACT_ID || '').trim();
-const FRM_MEDIDA_ID = String(process.env.FRM_MEDIDA_ID || process.env.FORMSPREE_ENVIO_ID || '').trim();
+const DEFAULT_FRM_CONTACT_ID = 'maqdjjkq';
+const DEFAULT_FRM_MEDIDA_ID = 'maqdjjkq';
+const FRM_CONTACT_ID = String(
+    process.env.FRM_CONTACT_ID
+    || process.env.FORMSPREE_CONTACT_ID
+    || DEFAULT_FRM_CONTACT_ID
+).trim();
+const FRM_MEDIDA_ID = String(
+    process.env.FRM_MEDIDA_ID
+    || process.env.FORMSPREE_ENVIO_ID
+    || DEFAULT_FRM_MEDIDA_ID
+).trim();
 const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
 const QUOTE_MAX_FILES = Number.parseInt(process.env.QUOTE_MAX_FILES, 10) || 6;
 const QUOTE_FILE_MAX_MB = Number.parseInt(process.env.QUOTE_FILE_MAX_MB, 10) || 5;
@@ -199,7 +209,10 @@ async function submitFormspreeJson({ endpoint, payload }) {
     }
 
     if (!response.ok || responsePayload?.ok === false) {
-        throw createApiError('formspree_failed', 502);
+        const error = createApiError('formspree_failed', 502);
+        error.providerError = normalizeText(responsePayload?.error || '', 240);
+        error.providerStatus = response.status;
+        throw error;
     }
 }
 
@@ -684,26 +697,49 @@ async function handleContactSubmission(req, res, next) {
             return res.json({ ok: true, requestId: req.requestId });
         }
 
-        await submitFormspreeJson({
-            endpoint: FORMSPREE_CONTACT_ENDPOINT,
-            payload: {
-                page: 'contacto',
-                form_type: 'contacto',
-                name: contactPayload.name,
-                email: contactPayload.email,
-                phone: contactPayload.phone || 'No informado',
-                type: contactPayload.type || 'No informado',
-                message: contactPayload.message,
-                product_reference: contactPayload.productReference || '',
-                metadata_ip: metadata.ip || '',
-                metadata_user_agent: metadata.userAgent || '',
-                metadata_origin: metadata.origin || '',
-                metadata_timestamp: metadata.timestamp,
-                metadata_request_id: metadata.requestId || ''
-            }
-        });
+        const payload = {
+            page: 'contacto',
+            form_type: 'contacto',
+            name: contactPayload.name,
+            email: contactPayload.email,
+            phone: contactPayload.phone || 'No informado',
+            type: contactPayload.type || 'No informado',
+            message: contactPayload.message,
+            product_reference: contactPayload.productReference || '',
+            metadata_ip: metadata.ip || '',
+            metadata_user_agent: metadata.userAgent || '',
+            metadata_origin: metadata.origin || '',
+            metadata_timestamp: metadata.timestamp,
+            metadata_request_id: metadata.requestId || ''
+        };
 
-        return res.json({ ok: true, requestId: req.requestId });
+        const endpoints = Array.from(new Set([
+            String(FORMSPREE_CONTACT_ENDPOINT || '').trim(),
+            String(FORMSPREE_MEDIDA_ENDPOINT || '').trim()
+        ].filter(Boolean)));
+
+        if (endpoints.length === 0) {
+            throw createApiError('forms_provider_not_configured', 503);
+        }
+
+        let lastError = null;
+        for (const endpoint of endpoints) {
+            try {
+                await submitFormspreeJson({ endpoint, payload });
+                return res.json({ ok: true, requestId: req.requestId });
+            } catch (error) {
+                lastError = error;
+                if (!isProduction) {
+                    const providerStatus = Number.parseInt(error?.providerStatus, 10);
+                    const providerError = normalizeText(error?.providerError || '', 240);
+                    console.warn(
+                        `[${req.requestId}] ⚠️ Contacto fallback endpoint rechazado (${providerStatus || 'n/a'}) ${providerError}`
+                    );
+                }
+            }
+        }
+
+        throw lastError || createApiError('formspree_failed', 502);
     } catch (error) {
         return next(error);
     }
