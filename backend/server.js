@@ -27,19 +27,6 @@ const FRONTEND_NOT_FOUND_PATH = path.resolve(FRONTEND_PAGES_PATH, '404.html');
 const hasFrontendStaticBundle = fs.existsSync(FRONTEND_ROOT_PATH) && fs.existsSync(FRONTEND_PAGES_PATH);
 const forceHttps = process.env.FORCE_HTTPS === 'true' || isProduction;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
-const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
-const DEFAULT_FRM_CONTACT_ID = 'xqedeven';
-const DEFAULT_FRM_MEDIDA_ID = 'maqdjjkq';
-const FRM_CONTACT_ID = String(
-    process.env.FRM_CONTACT_ID
-    || process.env.FORMSPREE_CONTACT_ID
-    || DEFAULT_FRM_CONTACT_ID
-).trim();
-const FRM_MEDIDA_ID = String(
-    process.env.FRM_MEDIDA_ID
-    || process.env.FORMSPREE_ENVIO_ID
-    || DEFAULT_FRM_MEDIDA_ID
-).trim();
 const FORMS_DRY_RUN = process.env.DRY_RUN === 'true';
 const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
 const DELIVERY_CONFIG_PATH = path.resolve(__dirname, 'config', 'delivery-config.json');
@@ -134,23 +121,8 @@ const QUOTE_STATUS_LABELS = Object.freeze({
     cancelled: 'Cancelado'
 });
 
-function buildFormspreeEndpoint(formId, fallbackEndpoint = '') {
-    const normalizedId = String(formId || '').trim();
-    if (normalizedId) {
-        return `https://formspree.io/f/${normalizedId}`;
-    }
-
-    return String(fallbackEndpoint || '').trim();
-}
-
-const FORMSPREE_CONTACT_ENDPOINT = buildFormspreeEndpoint(
-    FRM_CONTACT_ID,
-    LEGACY_CONTACT_FORM_ENDPOINT
-);
-const FORMSPREE_MEDIDA_ENDPOINT = buildFormspreeEndpoint(
-    FRM_MEDIDA_ID,
-    ''
-);
+const FORMSPREE_CONTACT_ENDPOINT = 'https://formspree.io/f/xqedeven';
+const FORMSPREE_MEDIDA_ENDPOINT = 'https://formspree.io/f/maqdjjkq';
 const defaultAllowedOrigins = [
     NORMALIZED_FRONTEND_URL || 'https://zarpadomueble.com',
     'https://www.zarpadomueble.com',
@@ -162,20 +134,40 @@ const defaultAllowedOrigins = [
     BASE_URL
 ];
 
+function normalizeOriginValue(value) {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+        return '';
+    }
+
+    try {
+        return new URL(normalized).origin;
+    } catch {
+        return normalized.replace(/\/+$/, '');
+    }
+}
+
+const configuredAllowedOriginsFromEnv = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS
+        .split(',')
+        .map(origin => normalizeOriginValue(origin))
+        .filter(Boolean)
+    : [];
+
 const configuredAllowedOrigins = [
     ...new Set(
-        (process.env.ALLOWED_ORIGINS
-            ? process.env.ALLOWED_ORIGINS.split(',')
-            : defaultAllowedOrigins
-        )
-            .map(origin => origin.trim())
+        [
+            ...defaultAllowedOrigins,
+            ...configuredAllowedOriginsFromEnv
+        ]
+            .map(origin => normalizeOriginValue(origin))
             .filter(Boolean)
     )
 ];
 
 const allowedOrigins = new Set(configuredAllowedOrigins);
 const NETLIFY_PREVIEW_HOST_PATTERN = new RegExp(
-    process.env.NETLIFY_PREVIEW_HOST_PATTERN || '^[a-z0-9-]+--zarpadomueble\\.netlify\\.app$',
+    process.env.NETLIFY_PREVIEW_HOST_PATTERN || '^[a-z0-9-]+\\.netlify\\.app$',
     'i'
 );
 
@@ -192,25 +184,39 @@ function isAllowedNetlifyPreviewOrigin(origin) {
     }
 }
 
-function isAllowedOrigin(origin) {
+function isLocalDevOrigin(origin) {
     if (!origin) {
-        return true;
-    }
-
-    return allowedOrigins.has(origin) || isAllowedNetlifyPreviewOrigin(origin);
-}
-
-function extractOriginFromUrlLike(value) {
-    const normalized = String(value || '').trim();
-    if (!normalized) {
-        return '';
+        return false;
     }
 
     try {
-        return new URL(normalized).origin;
+        const parsed = new URL(origin);
+        const isLocalHost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+        return isLocalHost && (parsed.protocol === 'http:' || parsed.protocol === 'https:');
     } catch {
-        return '';
+        return false;
     }
+}
+
+function isAllowedOrigin(origin) {
+    const normalizedOrigin = normalizeOriginValue(origin);
+    if (!normalizedOrigin) {
+        return true;
+    }
+
+    if (!isProduction && normalizedOrigin === 'null') {
+        return true;
+    }
+
+    return (
+        allowedOrigins.has(normalizedOrigin)
+        || isAllowedNetlifyPreviewOrigin(normalizedOrigin)
+        || isLocalDevOrigin(normalizedOrigin)
+    );
+}
+
+function extractOriginFromUrlLike(value) {
+    return normalizeOriginValue(value);
 }
 
 function hasAllowedFormSource(request) {
@@ -1844,8 +1850,9 @@ const formsLimiter = rateLimit({
 });
 
 function hasAllowedOrigin(request) {
-    const origin = request.get('origin');
-    return isAllowedOrigin(origin);
+    const origin = String(request.get('origin') || '').trim();
+    const refererOrigin = extractOriginFromUrlLike(request.get('referer'));
+    return isAllowedOrigin(origin) || isAllowedOrigin(refererOrigin);
 }
 
 function requireAllowedOrigin(request, response, next) {
@@ -1854,9 +1861,11 @@ function requireAllowedOrigin(request, response, next) {
     }
 
     if (!isProduction) {
-        console.warn(`[CORS] Request bloqueado por origin inválido: ${request.get('origin') || 'null'}`);
+        console.warn(
+            `[CORS] Request bloqueado por source inválido. origin=${request.get('origin') || 'null'} referer=${request.get('referer') || 'null'}`
+        );
     }
-    return response.status(403).json({ ok: false, error: 'Origen no permitido' });
+    return response.status(403).json({ ok: false, error: 'Origen no permitido', code: 'origin_not_allowed' });
 }
 
 function safeCompareTokens(leftValue, rightValue) {

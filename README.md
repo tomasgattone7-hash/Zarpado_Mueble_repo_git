@@ -74,8 +74,6 @@ Usar `backend/.env.example` como plantilla. No commitear `.env`.
 Mínimas para producción:
 
 - `MP_ACCESS_TOKEN`
-- `FRM_CONTACT_ID=xqedeven`
-- `FRM_MEDIDA_ID=maqdjjkq`
 - `FRONTEND_URL=https://zarpadomueble.com`
 - `API_URL=https://api.zarpadomueble.com`
 

@@ -26,12 +26,13 @@ Usar `./.env.example` como base.
 Claves de producción mínimas:
 
 - `MP_ACCESS_TOKEN`
-- `FRM_CONTACT_ID=xqedeven`
-- `FRM_MEDIDA_ID=maqdjjkq`
 - `FRONTEND_URL=https://zarpadomueble.com`
 - `API_URL=https://api.zarpadomueble.com`
 
 Notas:
 
 - No usa reCAPTCHA.
+- Formspree fijo por endpoint:
+  - Contacto: `https://formspree.io/f/xqedeven`
+  - A Medida: `https://formspree.io/f/maqdjjkq`
 - Anti-spam en formularios: `origin/referer` allowlist + rate limit + honeypot (`website`/`company`) + validación de payload.

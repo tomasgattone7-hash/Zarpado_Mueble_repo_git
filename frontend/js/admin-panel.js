@@ -1,5 +1,5 @@
 const ADMIN_TOKEN_STORAGE_KEY = 'zm_admin_panel_token';
-const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const PROD_API_BASE_URL = '';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
 
 function normalizeApiBaseUrl(value) {

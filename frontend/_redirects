@@ -1,4 +1,4 @@
-/api/*  https://api.zarpadomueble.com/:splat  200
+/api/*  https://api.zarpadomueble.com/api/:splat  200
 /forms/*  https://api.zarpadomueble.com/forms/:splat  200
 /tienda  /pages/tienda.html  200
 /a-medida  /pages/a-medida.html  200

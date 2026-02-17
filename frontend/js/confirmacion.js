@@ -3,7 +3,7 @@ const CART_STORAGE_KEY = 'zarpadoCart';
 const PHONE_PATTERN = /^[0-9+()\-\s]{6,40}$/;
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const POSTAL_CODE_PATTERN = /^\d{4}$/;
-const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const PROD_API_BASE_URL = '';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FETCH_TIMEOUT_MS = 12000;
 
