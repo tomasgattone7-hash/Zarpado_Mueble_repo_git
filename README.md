@@ -1,6 +1,14 @@
 # Zarpado Mueble
 
-Estructura actual del proyecto:
+Repositorio organizado para deploy separado:
+
+- `frontend/` -> Netlify (sitio estático)
+- `backend/` -> Railway (API Node/Express)
+
+Dominio productivo: `https://zarpadomueble.com`  
+API productiva: `https://api.zarpadomueble.com`
+
+## Estructura
 
 ```text
 muebles_web/
@@ -10,45 +18,107 @@ muebles_web/
 │   ├── js/
 │   ├── pages/
 │   ├── index.html
-│   ├── sitemap.xml
+│   ├── _redirects
+│   ├── favicon.ico
 │   ├── robots.txt
-│   └── _redirects
+│   └── sitemap.xml
 ├── backend/
-│   ├── server.js
+│   ├── config/
+│   ├── data/
 │   ├── routes/
+│   ├── scripts/
 │   ├── utils/
-│   └── package.json
-├── config/
-├── data/
-├── scripts/
-├── server.js
-├── package.json
+│   ├── .env.example
+│   ├── package.json
+│   └── server.js
+├── docs/
+├── .gitignore
+├── netlify.toml
 └── README.md
 ```
 
-## Comandos
+## Desarrollo local
 
-- `npm start`: inicia servidor en `http://localhost:3000`
-- `npm run dev`: inicia con nodemon
-- `npm run lint`: valida backend + frontend JS
-- `npm run smoke`: prueba rápida de APIs críticas
+### Backend
 
-## Frontend
+```bash
+cd backend
+npm ci
+npm start
+```
 
-- CSS: `frontend/css/styles.min.css`
-- JS principal: `frontend/js/script.min.js`
-- Páginas internas: `frontend/pages/*.html`
-- Favicons estándar:
-  - `/assets/favicon-32x32.png`
-  - `/assets/favicon-16x16.png`
-  - `/assets/apple-touch-icon.png`
-  - `/assets/favicon.ico`
+API local: `http://localhost:3000`
 
-## Formularios
+Health checks:
 
-El frontend envía a:
+- `GET /health`
+- `GET /api/health`
 
+### Frontend
+
+Desde la raíz del repo:
+
+```bash
+npx serve frontend
+```
+
+El frontend usa:
+
+- `http://localhost:3000` cuando corre en `localhost`
+- `https://api.zarpadomueble.com` fuera de `localhost`
+
+## Variables de entorno (backend)
+
+Usar `backend/.env.example` como plantilla. No commitear `.env`.
+
+Mínimas para producción:
+
+- `MP_ACCESS_TOKEN`
+- `FRM_CONTACT_ID=xqedeven`
+- `FRM_MEDIDA_ID=maqdjjkq`
+- `FRONTEND_URL=https://zarpadomueble.com`
+- `API_URL=https://api.zarpadomueble.com`
+
+Importante:
+
+- No usa reCAPTCHA.
+- Anti-spam de formularios por backend: allowlist de `origin/referer`, rate limit por IP, honeypot (`website`/`company`) y validación de payload.
+
+## Endpoints principales
+
+- `GET /health`
+- `GET /api/health`
+- `GET /api/store/catalog`
+- `POST /api/delivery/quote`
+- `POST /api/mp/create-preference`
 - `POST /forms/contacto`
 - `POST /forms/medida`
 
-El backend reenvía a Formspree con fallback de endpoint para evitar errores 500 si un form ID queda inválido.
+Form relay (Formspree):
+
+- `/forms/contacto` -> `xqedeven`
+- `/forms/medida` -> `maqdjjkq`
+
+## Deploy
+
+### Netlify (frontend)
+
+- Base del repo: raíz (`muebles_web/`)
+- `netlify.toml`:
+  - `publish = "frontend"`
+  - `command = ""`
+- Ruteo y rewrites en `frontend/_redirects`
+
+### Railway (backend)
+
+- Root Directory del servicio: `backend`
+- Start command: `npm start`
+- Puerto: `process.env.PORT`
+
+## Mercado Pago
+
+No cambiar rutas de checkout. El backend crea preferencias en:
+
+- `POST /api/mp/create-preference`
+
+Back URLs usan `FRONTEND_URL` y webhook usa `API_URL`/`NOTIFICATION_URL`.
