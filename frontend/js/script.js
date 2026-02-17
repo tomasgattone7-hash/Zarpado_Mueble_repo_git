@@ -34,7 +34,7 @@ const THEME_STORAGE_KEY = 'zm_theme';
 const LIGHT_THEME = 'light';
 const DARK_THEME = 'dark';
 const THEME_MEDIA_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
-const PROD_API_BASE_URL = '';
+const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FETCH_TIMEOUT_MS = 12000;
 
@@ -760,6 +760,7 @@ function initContactFormSubmission() {
 
         try {
             const payload = Object.fromEntries(formData.entries());
+
             const response = await fetchWithTimeout(buildApiUrl('/forms/contacto'), {
                 method: 'POST',
                 headers: {

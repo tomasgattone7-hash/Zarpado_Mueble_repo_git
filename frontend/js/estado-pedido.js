@@ -1,4 +1,4 @@
-const PROD_API_BASE_URL = '';
+const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
 
 function normalizeApiBaseUrl(value) {

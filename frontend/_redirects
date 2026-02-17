@@ -1,4 +1,4 @@
-/api/*  https://api.zarpadomueble.com/api/:splat  200
+/api/*  https://api.zarpadomueble.com/:splat  200
 /forms/*  https://api.zarpadomueble.com/forms/:splat  200
 /tienda  /pages/tienda.html  200
 /a-medida  /pages/a-medida.html  200
@@ -12,6 +12,9 @@
 /datos-envio  /pages/datos-envio.html  200
 /confirmacion  /pages/confirmacion.html  200
 /estado-pedido  /pages/estado-pedido.html  200
+/success  /pages/success.html  200
+/failure  /pages/failure.html  200
+/pending  /pages/pending.html  200
 /panel-interno  /pages/panel-interno.html  200
 /tienda/escritorios  /pages/tienda-escritorios.html  200
 /tienda/cocinas  /pages/tienda-cocinas.html  200
