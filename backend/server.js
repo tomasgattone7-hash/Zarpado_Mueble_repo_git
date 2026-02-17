@@ -896,6 +896,22 @@ app.use((error, req, res, _next) => {
         return res.status(403).json({ ok: false, error: 'Origen no permitido', requestId });
     }
 
+    if (error.message === 'formspree_failed') {
+        return res.status(error.status || 502).json({
+            ok: false,
+            error: 'No pudimos enviar el formulario en este momento. Intentá nuevamente en unos minutos.',
+            requestId
+        });
+    }
+
+    if (error.message === 'forms_provider_not_configured') {
+        return res.status(error.status || 503).json({
+            ok: false,
+            error: 'El servicio de formularios no está configurado. Contactanos por WhatsApp mientras lo resolvemos.',
+            requestId
+        });
+    }
+
     const status = error.status || 500;
     const payload = {
         ok: false,

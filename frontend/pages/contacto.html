@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contacto | Zarpado Mueble</title>
+    <meta name="description"
+        content="Contactate con Zarpado Mueble para compras de Tienda o proyectos A Medida. Te respondemos por WhatsApp, redes o formulario.">
+    <link rel="canonical" href="https://zarpadomueble.com/contacto.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"
+        integrity="sha384-7IOpP42IUwYAb/f8f26rg1Z0NNbncPQbygjIEz98bakYOcz9dz8ZmYX33NoCX2lW" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <link rel="stylesheet" href="/css/styles.min.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/assets/favicon.ico">
+    <meta name="theme-color" content="#000000">
+</head>
+
+<body data-page="contacto">
+    <header class="navbar"></header>
+
+    <section class="hero" style="height: 60vh; min-height: 400px;">
+        <div class="hero-slider">
+            <div class="hero-slide active" style="background-image: url('/assets/18.webp');"></div>
+        </div>
+        <div class="hero-content">
+            <span class="section-tag" style="color: var(--color-accent); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">Contacto</span>
+            <h1 class="hero-title" style="font-size: 3.2rem;">Hablemos de tu próximo mueble</h1>
+            <p class="section-desc" style="color: #eee; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                Escribinos para comprar en Tienda o para solicitar una cotización A Medida.
+            </p>
+        </div>
+    </section>
+
+    <section class="section" style="padding-top: 0;">
+        <div class="container">
+            <div class="reveal" style="max-width: 900px; margin: 0 auto 3rem;">
+                <h2 class="text-center" style="margin-bottom: 1.6rem; font-size: 1.8rem;">Canales directos</h2>
+                <div class="social-grid">
+                    <a href="https://wa.me/5491127474780" target="_blank" rel="noopener noreferrer" class="social-card whatsapp">
+                        <i class="fab fa-whatsapp"></i>
+                        <h4>WhatsApp</h4>
+                        <p>Respuesta rápida para compras y cotizaciones.</p>
+                    </a>
+                    <a href="https://www.instagram.com/zarpadomuebleoficial/" target="_blank" rel="noopener noreferrer"
+                        class="social-card instagram">
+                        <i class="fab fa-instagram"></i>
+                        <h4>Instagram</h4>
+                        <p>Inspiración, novedades y trabajos recientes.</p>
+                    </a>
+                    <a href="https://www.facebook.com/profile.php?id=61583196106459" target="_blank" rel="noopener noreferrer"
+                        class="social-card facebook">
+                        <i class="fab fa-facebook-f"></i>
+                        <h4>Facebook</h4>
+                        <p>Seguinos para ver nuevas entregas.</p>
+                    </a>
+                </div>
+            </div>
+
+            <div class="contact-form reveal" style="transition-delay: 0.2s;">
+                <form id="form-contacto" action="#" method="POST" novalidate>
+                    <input type="hidden" name="productReference" value="">
+                    <div style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
+                        <label for="contact-company">Empresa</label>
+                        <input id="contact-company" type="text" name="company" tabindex="-1" autocomplete="off" data-lpignore="true">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-name"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Nombre y apellido</label>
+                        <input id="contact-name" type="text" name="name" class="form-input" required placeholder="Ej: Juan Pérez" autocomplete="name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-email"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Correo electrónico</label>
+                        <input id="contact-email" type="email" name="email" class="form-input" required placeholder="Ej: juan@email.com"
+                            autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-phone"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Teléfono</label>
+                        <input id="contact-phone" type="tel" name="phone" class="form-input" placeholder="Ej: 11 1234 5678" autocomplete="tel">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-type"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Tipo de consulta</label>
+                        <select id="contact-type" name="type" class="form-input" style="appearance: none; -webkit-appearance: none;">
+                            <option value="" selected>Seleccioná una opción</option>
+                            <option value="Escritorio">Escritorio / Oficina</option>
+                            <option value="Rack TV">Rack TV / Living</option>
+                            <option value="Cocina">Cocina</option>
+                            <option value="Placard">Placard / Vestidor</option>
+                            <option value="Otro">Proyecto a medida / Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-message"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Mensaje</label>
+                        <textarea id="contact-message" name="message" class="form-textarea" rows="5" required minlength="10"
+                            placeholder="Contanos medidas aproximadas, estilo que buscás y para cuándo lo necesitás."></textarea>
+                    </div>
+
+                    <button id="contact-submit-btn" type="submit" class="btn btn-primary" style="width: 100%;">Solicitar presupuesto</button>
+                    <p id="contact-submit-info" class="contact-submit-info" aria-live="polite">Responderemos a la brevedad.</p>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <div data-trust-block></div>
+    <footer class="footer"></footer>
+
+    <script src="/js/site-shell.min.js"></script>
+    <script src="/js/script.min.js"></script>
+    <script src="/js/logo-theme.min.js" defer></script>
+</body>
+
+</html>

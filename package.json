@@ -8,8 +8,8 @@
     "dev": "nodemon server.js",
     "optimize:images": "node scripts/optimize-images.mjs",
     "audit": "npm audit --audit-level=moderate",
-    "lint": "eslint \"server.js\" \"script.js\" \"backend/server.js\" \"scripts/**/*.mjs\"",
-    "format": "prettier --write \"*.{html,css,js,json,md}\" \"js/**/*.js\" \"scripts/**/*.mjs\"",
+    "lint": "eslint \"server.js\" \"frontend/js/script.js\" \"frontend/js/admin-panel.js\" \"frontend/js/confirmacion.js\" \"frontend/js/datos-envio.js\" \"frontend/js/estado-pedido.js\" \"frontend/js/logo-theme.js\" \"frontend/js/site-shell.js\" \"backend/server.js\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"frontend/**/*.{html,css,js,json,md}\" \"*.{json,md}\" \"scripts/**/*.mjs\"",
     "smoke": "node scripts/smoke-test.mjs",
     "test": "npm run smoke"
   },

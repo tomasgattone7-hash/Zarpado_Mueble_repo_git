@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datos de envío | Zarpado Mueble</title>
+    <meta name="description" content="Completá tus datos de envío para avanzar al paso de confirmación de compra.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" integrity="sha384-7IOpP42IUwYAb/f8f26rg1Z0NNbncPQbygjIEz98bakYOcz9dz8ZmYX33NoCX2lW" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <link rel="stylesheet" href="/css/styles.min.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/assets/favicon.ico">
+    <meta name="theme-color" content="#000000">
+</head>
+
+<body data-cart="off">
+    <main class="section checkout-flow-section">
+        <div class="container">
+            <div class="checkout-flow-card reveal">
+                <span class="section-tag">Checkout Tienda</span>
+                <h1 class="section-title checkout-flow-title">Paso 1 de 3: datos de envío</h1>
+                <p class="section-desc checkout-flow-desc">Completá estos datos para confirmar tu compra y pasar al pago seguro con Mercado Pago.</p>
+
+                <ol class="checkout-progress" aria-label="Progreso de compra">
+                    <li class="checkout-progress-step is-active" aria-current="step">
+                        <span class="checkout-progress-number">1</span>
+                        <span class="checkout-progress-label">Datos de envío</span>
+                    </li>
+                    <li class="checkout-progress-step">
+                        <span class="checkout-progress-number">2</span>
+                        <span class="checkout-progress-label">Confirmación</span>
+                    </li>
+                    <li class="checkout-progress-step">
+                        <span class="checkout-progress-number">3</span>
+                        <span class="checkout-progress-label">Pago</span>
+                    </li>
+                </ol>
+
+                <form id="shipping-step-form" class="checkout-form" novalidate>
+                    <div class="shipping-data-grid">
+                        <div class="form-group shipping-data-full">
+                            <label for="fullName">Nombre completo *</label>
+                            <input id="fullName" name="fullName" class="form-input" required autocomplete="name" maxlength="120">
+                            <p id="error-fullName" class="form-error" role="alert" hidden></p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input id="email" name="email" class="form-input" type="email" required autocomplete="email" inputmode="email" maxlength="160">
+                            <p id="error-email" class="form-error" role="alert" hidden></p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Teléfono *</label>
+                            <input id="phone" name="phone" class="form-input" required autocomplete="tel" inputmode="tel" maxlength="40" placeholder="11 5555 5555">
+                            <p id="error-phone" class="form-error" role="alert" hidden></p>
+                        </div>
+
+                        <div class="form-group shipping-data-full">
+                            <label for="addressLine">Calle y número *</label>
+                            <input id="addressLine" name="addressLine" class="form-input" required autocomplete="address-line1" maxlength="160" placeholder="Ej: Av. Rivadavia 7420">
+                            <p id="error-addressLine" class="form-error" role="alert" hidden></p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="city">Ciudad *</label>
+                            <input id="city" name="city" class="form-input" required autocomplete="address-level2" maxlength="80">
+                            <p id="error-city" class="form-error" role="alert" hidden></p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="province">Provincia *</label>
+                            <input id="province" name="province" class="form-input" required autocomplete="address-level1" maxlength="80">
+                            <p id="error-province" class="form-error" role="alert" hidden></p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="postalCode">Código Postal *</label>
+                            <input id="postalCode" name="postalCode" class="form-input" required inputmode="numeric" autocomplete="postal-code" maxlength="4" placeholder="1746">
+                            <p id="error-postalCode" class="form-error" role="alert" hidden></p>
+                        </div>
+                    </div>
+
+                    <button id="shipping-step-submit" class="btn btn-primary" type="submit">Continuar a confirmación</button>
+                    <p id="shipping-form-feedback" class="checkout-flow-feedback" aria-live="polite"></p>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/site-shell.min.js"></script>
+    <script src="/js/script.min.js"></script>
+    <script src="/js/datos-envio.min.js" defer></script>
+    <script src="/js/logo-theme.min.js" defer></script>
+</body>
+
+</html>

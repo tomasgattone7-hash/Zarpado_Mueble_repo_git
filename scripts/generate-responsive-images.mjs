@@ -3,7 +3,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const rootDir = process.cwd();
-const assetsDir = path.resolve(rootDir, 'assets');
+const assetsDir = path.resolve(rootDir, 'frontend', 'assets');
 const outputDir = path.resolve(assetsDir, 'optimized');
 
 const PRODUCT_SOURCES = [
@@ -74,7 +74,7 @@ async function main() {
         await generateSet(fileName, [640, 960, 1280, 1600]);
     }
 
-    console.log('Responsive image sets generated in assets/optimized');
+    console.log('Responsive image sets generated in frontend/assets/optimized');
 }
 
 main().catch((error) => {

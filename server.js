@@ -19,6 +19,8 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://zarpadomueble.com';
 const API_URL = process.env.API_URL || 'https://api.zarpadomueble.com';
 const isProduction = process.env.NODE_ENV === 'production';
+const FRONTEND_ROOT_PATH = path.resolve(__dirname, 'frontend');
+const FRONTEND_PAGES_PATH = path.resolve(FRONTEND_ROOT_PATH, 'pages');
 const forceHttps = process.env.FORCE_HTTPS === 'true' || isProduction;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
 const LEGACY_CONTACT_FORM_ENDPOINT = String(process.env.CONTACT_FORM_ENDPOINT || '').trim();
@@ -1795,7 +1797,7 @@ app.get('/api/csrf-token', requireAllowedOrigin, attachCsrfSession, (req, res) =
     return res.json({ ok: true, csrfToken: res.locals.csrfToken });
 });
 
-const blockedPrefixPaths = ['/backend/', '/scripts/', '/node_modules/', '/.github/', '/config/', '/data/'];
+const blockedPrefixPaths = ['/backend/', '/scripts/', '/node_modules/', '/.github/', '/config/', '/data/', '/pages/'];
 const blockedFilePattern = /\.(?:md|map|ya?ml|toml|cjs|mjs|env|example|log)$/i;
 
 app.use((req, res, next) => {
@@ -1817,20 +1819,21 @@ app.use((req, res, next) => {
     return next();
 });
 
-const friendlyStaticRoutes = new Map([
-    ['/tienda', 'tienda.html'],
-    ['/a-medida', 'a-medida.html'],
-    ['/contacto', 'contacto.html'],
-    ['/nosotros', 'nosotros.html'],
-    ['/privacidad', 'privacidad.html'],
-    ['/reembolso', 'reembolso.html'],
-    ['/terminos', 'terminos.html'],
-    ['/envios', 'envios.html'],
-    ['/garantia', 'garantia.html'],
-    ['/datos-envio', 'datos-envio.html'],
-    ['/confirmacion', 'confirmacion.html'],
-    ['/estado-pedido', 'estado-pedido.html'],
-    ['/panel-interno', 'panel-interno.html'],
+const friendlyStaticRoutes = new Map();
+const staticPages = fs.readdirSync(FRONTEND_PAGES_PATH)
+    .filter(fileName => fileName.toLowerCase().endsWith('.html'));
+
+for (const htmlFile of staticPages) {
+    const baseName = htmlFile.replace(/\.html$/i, '');
+    if (baseName === '404') {
+        continue;
+    }
+
+    friendlyStaticRoutes.set(`/${baseName}`, htmlFile);
+    friendlyStaticRoutes.set(`/${baseName}.html`, htmlFile);
+}
+
+const customFriendlyAliases = new Map([
     ['/tienda/escritorios', 'tienda-escritorios.html'],
     ['/tienda/cocinas', 'tienda-cocinas.html'],
     ['/tienda/placards', 'tienda-placards.html'],
@@ -1838,16 +1841,20 @@ const friendlyStaticRoutes = new Map([
     ['/tienda/comedor', 'tienda-comedor.html']
 ]);
 
+for (const [routePath, htmlFile] of customFriendlyAliases.entries()) {
+    friendlyStaticRoutes.set(routePath, htmlFile);
+}
+
 app.get(Array.from(friendlyStaticRoutes.keys()), (req, res) => {
     const htmlFile = friendlyStaticRoutes.get(req.path);
     if (!htmlFile) {
         return res.status(404).end();
     }
 
-    return res.sendFile(path.resolve(__dirname, htmlFile));
+    return res.sendFile(path.resolve(FRONTEND_PAGES_PATH, htmlFile));
 });
 
-app.use(express.static(path.resolve(__dirname), {
+app.use(express.static(FRONTEND_ROOT_PATH, {
     index: 'index.html',
     extensions: ['html'],
     maxAge: isProduction ? '1d' : 0,
@@ -4661,7 +4668,7 @@ app.use((req, res, next) => {
         return next();
     }
 
-    return res.status(404).sendFile(path.resolve(__dirname, '404.html'));
+    return res.status(404).sendFile(path.resolve(FRONTEND_PAGES_PATH, '404.html'));
 });
 
 app.use((error, req, res, _next) => {
@@ -4707,6 +4714,22 @@ app.use((error, req, res, _next) => {
             ok: false,
             error: 'No pudimos conectar con Mercado Pago en este momento. Verificá conectividad de red/firewall y reintentá.',
             code: 'MP_UNREACHABLE',
+            requestId
+        });
+    }
+
+    if (error.message === 'formspree_failed') {
+        return res.status(error.status || 502).json({
+            ok: false,
+            error: 'No pudimos enviar el formulario en este momento. Intentá nuevamente en unos minutos.',
+            requestId
+        });
+    }
+
+    if (error.message === 'forms_provider_not_configured') {
+        return res.status(error.status || 503).json({
+            ok: false,
+            error: 'El servicio de formularios no está configurado. Contactanos por WhatsApp mientras lo resolvemos.',
             requestId
         });
     }
