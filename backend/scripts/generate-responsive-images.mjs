@@ -3,7 +3,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const rootDir = process.cwd();
-const assetsDir = path.resolve(rootDir, 'frontend', 'assets');
+const assetsDir = path.resolve(rootDir, '..', 'frontend', 'assets');
 const outputDir = path.resolve(assetsDir, 'optimized');
 
 const PRODUCT_SOURCES = [

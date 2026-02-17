@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 
-const assetsDir = path.resolve(process.cwd(), 'frontend', 'assets');
+const assetsDir = path.resolve(process.cwd(), '..', 'frontend', 'assets');
 const minSizeBytes = 250 * 1024;
 const quality = 78;
 

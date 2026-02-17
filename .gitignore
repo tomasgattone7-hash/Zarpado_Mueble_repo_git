@@ -1,44 +1,31 @@
 # Dependencies
 node_modules/
-package-lock.json
+**/node_modules/
 
-# Environment variables (strict)
+# Environment files
 .env
 .env.*
+!.env.example
 **/.env
 **/.env.*
+!**/.env.example
 
 # Logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
 
-# OS files
-.DS_Store
-Thumbs.db
+# Build output
+build/
+dist/
+coverage/
+.nyc_output/
 
-# IDE
+# Editors / OS
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Testing
-coverage/
-.nyc_output/
-
-# Dependencias
-**/node_module
-
-# Variables de entorno
-**/.env
-**/.env.*
-
-# Logs
-npm-debug.log*
-
-# Build
-dist/
-build/
-
-# Sistema
 .DS_Store
+Thumbs.db
