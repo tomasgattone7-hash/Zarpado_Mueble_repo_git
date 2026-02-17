@@ -1,0 +1,176 @@
+{
+  "quotes": [
+    {
+      "quoteId": "QM-1771264883473-A99F0C",
+      "createdAt": "2026-02-16T18:01:23.473Z",
+      "updatedAt": "2026-02-16T18:01:23.473Z",
+      "status": "received",
+      "source": "web",
+      "provider": "formspree",
+      "linkedOrderId": null,
+      "customer": {
+        "fullName": "tomas",
+        "email": "tomiigattone7@gmail.com",
+        "phone": "+54 9 34 2545-9773",
+        "cityNeighborhood": "coronda"
+      },
+      "project": {
+        "furnitureType": "Placard",
+        "approximateMeasures": "2.40 ancho 185 alto 60 prof",
+        "estimatedBudget": "",
+        "targetDate": "",
+        "additionalComments": "holis",
+        "leadTimeEstimate": "Se define en propuesta final y aprobación de diseño."
+      },
+      "attachments": [
+        {
+          "originalName": "3b5850b6-8970-492a-8a11-8eb8b3a8d81b.jpeg",
+          "mimeType": "image/jpeg",
+          "sizeKb": 48
+        }
+      ],
+      "timeline": [
+        {
+          "status": "received",
+          "label": "Solicitud recibida",
+          "note": "Solicitud enviada desde la web",
+          "at": "2026-02-16T18:01:23.474Z"
+        }
+      ]
+    },
+    {
+      "quoteId": "QM-1771268513937-C10C6C",
+      "createdAt": "2026-02-16T19:01:53.937Z",
+      "updatedAt": "2026-02-16T19:01:53.937Z",
+      "status": "received",
+      "source": "web",
+      "provider": "formspree",
+      "linkedOrderId": null,
+      "customer": {
+        "fullName": "tomas",
+        "email": "fgairnet@hotmail.com",
+        "phone": "+54 9 11 2747-4780",
+        "cityNeighborhood": "coronda"
+      },
+      "project": {
+        "furnitureType": "Rack TV",
+        "approximateMeasures": "123 alto 150 ancho",
+        "estimatedBudget": "10000000",
+        "targetDate": "2026-02-25",
+        "additionalComments": "asdfghfgdhhsdfgh",
+        "leadTimeEstimate": "Se define en propuesta final y aprobación de diseño."
+      },
+      "attachments": [
+        {
+          "originalName": "11.jpg",
+          "mimeType": "image/jpeg",
+          "sizeKb": 142
+        }
+      ],
+      "timeline": [
+        {
+          "status": "received",
+          "label": "Solicitud recibida",
+          "note": "Solicitud enviada desde la web",
+          "at": "2026-02-16T19:01:53.937Z"
+        }
+      ]
+    },
+    {
+      "quoteId": "QM-1771270550781-ED747E",
+      "createdAt": "2026-02-16T19:35:50.782Z",
+      "updatedAt": "2026-02-16T19:35:50.782Z",
+      "status": "received",
+      "source": "web",
+      "provider": "formspree",
+      "linkedOrderId": null,
+      "customer": {
+        "fullName": "tomas",
+        "email": "tomasabalero@hotmail.com",
+        "phone": "+54 9 34 2545-9773",
+        "cityNeighborhood": "coronda"
+      },
+      "project": {
+        "furnitureType": "Placard",
+        "approximateMeasures": "240 ancho 250 alto",
+        "estimatedBudget": "2000000",
+        "targetDate": "2026-02-25",
+        "additionalComments": "eyjghfjghjh",
+        "leadTimeEstimate": "Se define en propuesta final y aprobación de diseño."
+      },
+      "attachments": [
+        {
+          "originalName": "3b5850b6-8970-492a-8a11-8eb8b3a8d81b.jpeg",
+          "mimeType": "image/jpeg",
+          "sizeKb": 48
+        },
+        {
+          "originalName": "android-chrome-512x512blanco.png",
+          "mimeType": "image/png",
+          "sizeKb": 48
+        },
+        {
+          "originalName": "apple-touch-iconblanco.png",
+          "mimeType": "image/png",
+          "sizeKb": 11
+        }
+      ],
+      "timeline": [
+        {
+          "status": "received",
+          "label": "Solicitud recibida",
+          "note": "Solicitud enviada desde la web",
+          "at": "2026-02-16T19:35:50.782Z"
+        }
+      ]
+    },
+    {
+      "quoteId": "QM-1771270762129-F95B2E",
+      "createdAt": "2026-02-16T19:39:22.129Z",
+      "updatedAt": "2026-02-16T19:39:22.129Z",
+      "status": "received",
+      "source": "web",
+      "provider": "formspree",
+      "linkedOrderId": null,
+      "customer": {
+        "fullName": "tomas",
+        "email": "tomasabalero@hotmail.com",
+        "phone": "+54 9 34 2545-9773",
+        "cityNeighborhood": "coronda"
+      },
+      "project": {
+        "furnitureType": "Cocina",
+        "approximateMeasures": "250x456x254",
+        "estimatedBudget": "6000000",
+        "targetDate": "",
+        "additionalComments": "utfuyfyfgytf",
+        "leadTimeEstimate": "Se define en propuesta final y aprobación de diseño."
+      },
+      "attachments": [
+        {
+          "originalName": "ChatGPT Image 16 feb 2026, 04_25_11 p.m..png",
+          "mimeType": "image/png",
+          "sizeKb": 2137
+        },
+        {
+          "originalName": "ChatGPT Image 16 feb 2026, 04_25_17 p.m..png",
+          "mimeType": "image/png",
+          "sizeKb": 1825
+        },
+        {
+          "originalName": "ChatGPT Image 16 feb 2026, 04_25_20 p.m..png",
+          "mimeType": "image/png",
+          "sizeKb": 2137
+        }
+      ],
+      "timeline": [
+        {
+          "status": "received",
+          "label": "Solicitud recibida",
+          "note": "Solicitud enviada desde la web",
+          "at": "2026-02-16T19:39:22.129Z"
+        }
+      ]
+    }
+  ]
+}

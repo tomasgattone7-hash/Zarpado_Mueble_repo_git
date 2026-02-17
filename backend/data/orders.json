@@ -1,0 +1,764 @@
+{
+  "orders": [
+    {
+      "orderId": "ZM-1771040940208-32D050",
+      "createdAt": "2026-02-14T03:49:25.964Z",
+      "updatedAt": "2026-02-14T03:49:25.964Z",
+      "preferenceId": "offline-ZM-1771040940208-32D050",
+      "paymentStatus": "unavailable",
+      "checkoutStatus": "offline_fallback",
+      "items": [
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        }
+      ],
+      "delivery": {
+        "method": "pickup",
+        "postalCode": null,
+        "shippingLabel": "Retiro en fábrica",
+        "shippingCost": 0,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 185000,
+        "shipping": 0,
+        "installation": 0,
+        "total": 185000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771042634363-5E2F04",
+      "createdAt": "2026-02-14T04:17:15.272Z",
+      "updatedAt": "2026-02-14T04:17:15.272Z",
+      "preferenceId": "3202898734-f25bd18e-7578-4be6-a7bc-100485a20681",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "8",
+          "title": "Silla de Diseño",
+          "quantity": 1,
+          "unit_price": 85000
+        }
+      ],
+      "delivery": {
+        "method": "pickup",
+        "postalCode": null,
+        "shippingLabel": "Retiro en fábrica",
+        "shippingCost": 0,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 85000,
+        "shipping": 0,
+        "installation": 0,
+        "total": 85000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771042777718-1A2C87",
+      "createdAt": "2026-02-14T04:19:38.571Z",
+      "updatedAt": "2026-02-14T04:19:38.571Z",
+      "preferenceId": "3202898734-9b7c9635-e9e6-4cc5-84d7-02c3297d8f39",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "1146",
+        "shippingLabel": "CABA",
+        "shippingCost": 28000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 28000,
+        "installation": 0,
+        "total": 123000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771042857179-9A8768",
+      "createdAt": "2026-02-14T04:20:57.920Z",
+      "updatedAt": "2026-02-14T04:20:57.920Z",
+      "preferenceId": "3202898734-5168033a-5d5e-42c7-979a-92502d355fab",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "8",
+          "title": "Silla de Diseño",
+          "quantity": 1,
+          "unit_price": 85000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "1146",
+        "shippingLabel": "CABA",
+        "shippingCost": 28000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 85000,
+        "shipping": 28000,
+        "installation": 0,
+        "total": 113000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771043541142-17A3A8",
+      "createdAt": "2026-02-14T04:32:21.938Z",
+      "updatedAt": "2026-02-14T04:32:21.938Z",
+      "preferenceId": "3202898734-46e630e8-211a-43fc-a985-93ab13cdd3cb",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        },
+        {
+          "id": "6",
+          "title": "Escritorio Home Office",
+          "quantity": 1,
+          "unit_price": 120000
+        },
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        },
+        {
+          "id": "4",
+          "title": "Biblioteca Moderna",
+          "quantity": 1,
+          "unit_price": 145000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 660000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 715000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771113980664-BB6F58",
+      "createdAt": "2026-02-15T00:06:21.588Z",
+      "updatedAt": "2026-02-15T00:06:21.588Z",
+      "preferenceId": "3202898734-28270460-715a-46e6-bc2b-c17d11a55e36",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        },
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 305000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 360000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771118581634-00B936",
+      "createdAt": "2026-02-15T01:23:02.472Z",
+      "updatedAt": "2026-02-15T01:23:02.472Z",
+      "preferenceId": "3202898734-daee4089-680f-4798-9e1b-e6868619bc9b",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 210000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 265000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771119065474-01CB2B",
+      "createdAt": "2026-02-15T01:31:06.268Z",
+      "updatedAt": "2026-02-15T01:31:06.269Z",
+      "preferenceId": "3202898734-4711cdd4-3f2c-4cd4-8603-a8173e43d8ac",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 150000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771119850164-7F896B",
+      "createdAt": "2026-02-15T01:44:10.978Z",
+      "updatedAt": "2026-02-15T01:44:10.978Z",
+      "preferenceId": "3202898734-8b1877fe-3d04-41b0-af26-d8005849f098",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 2,
+          "unit_price": 95000
+        },
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 375000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 430000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771126464087-AB7A11",
+      "createdAt": "2026-02-15T03:34:24.846Z",
+      "updatedAt": "2026-02-15T03:34:24.846Z",
+      "preferenceId": "3202898734-c16fae0b-19a0-4b67-b4e0-84d3aac9a999",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        },
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 305000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 360000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771126507847-7D035D",
+      "createdAt": "2026-02-15T03:35:08.538Z",
+      "updatedAt": "2026-02-15T03:35:08.538Z",
+      "preferenceId": "3202898734-5481dc01-5907-436b-9fd1-faa868bc5284",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 3,
+          "unit_price": 95000
+        },
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 470000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 525000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128040824-366F37",
+      "createdAt": "2026-02-15T04:00:41.605Z",
+      "updatedAt": "2026-02-15T04:00:41.605Z",
+      "preferenceId": "3202898734-b39b040c-2ceb-469a-bb70-d8be580205e1",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "quantity": 1,
+          "unit_price": 210000
+        },
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 2,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "1146",
+        "shippingLabel": "CABA",
+        "shippingCost": 28000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 400000,
+        "shipping": 28000,
+        "installation": 0,
+        "total": 428000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128132301-4299E8",
+      "createdAt": "2026-02-15T04:02:13.619Z",
+      "updatedAt": "2026-02-15T04:02:13.619Z",
+      "preferenceId": "3202898734-5fa3a59f-7e0f-4870-84aa-e65084a97ef9",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 3,
+          "unit_price": 95000
+        },
+        {
+          "id": "1",
+          "title": "Escritorio Gamer Pro",
+          "quantity": 1,
+          "unit_price": 185000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "1146",
+        "shippingLabel": "CABA",
+        "shippingCost": 28000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 470000,
+        "shipping": 28000,
+        "installation": 0,
+        "total": 498000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128448138-0E1909",
+      "createdAt": "2026-02-15T04:07:28.950Z",
+      "updatedAt": "2026-02-15T04:07:28.950Z",
+      "preferenceId": "3202898734-0f863bd4-811c-4ab7-802c-68136d3bfffd",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 150000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771128566999-D5EAA4",
+      "createdAt": "2026-02-15T04:09:27.755Z",
+      "updatedAt": "2026-02-15T04:09:27.755Z",
+      "preferenceId": "3202898734-dc9bf9da-9cda-4ee9-8c29-d2941da66620",
+      "paymentStatus": "pending",
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "quantity": 1,
+          "unit_price": 95000
+        }
+      ],
+      "delivery": {
+        "method": "pickup",
+        "postalCode": null,
+        "shippingLabel": "Retiro en fábrica",
+        "shippingCost": 0,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 0,
+        "installation": 0,
+        "total": 95000
+      },
+      "customerData": null,
+      "paymentMeta": null
+    },
+    {
+      "orderId": "ZM-1771248445990-37999C",
+      "externalReference": "ORDER_1771248445990_FD3FFA",
+      "createdAt": "2026-02-16T13:27:27.260Z",
+      "updatedAt": "2026-02-16T13:27:27.260Z",
+      "preferenceId": "3202898734-e0ca54c0-6ca9-42ac-9d4d-efa3ce712ce3",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nórdico",
+          "description": "Vajillero Nórdico",
+          "quantity": 1,
+          "unit_price": 230000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 230000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 285000
+      },
+      "buyerEmail": "",
+      "customerData": null,
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-e0ca54c0-6ca9-42ac-9d4d-efa3ce712ce3",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771248445990_FD3FFA"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-e0ca54c0-6ca9-42ac-9d4d-efa3ce712ce3",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      }
+    },
+    {
+      "orderId": "ZM-1771256471131-AE7A4F",
+      "externalReference": "ORDER_1771256471131_38A66B",
+      "createdAt": "2026-02-16T15:41:11.963Z",
+      "updatedAt": "2026-02-16T15:41:11.963Z",
+      "preferenceId": "3202898734-09dfb184-7698-43f4-90fc-14c5c0f5e126",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nórdico",
+          "description": "Vajillero Nórdico",
+          "quantity": 1,
+          "unit_price": 230000
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior",
+        "shippingCost": 55000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0
+      },
+      "totals": {
+        "subtotal": 230000,
+        "shipping": 55000,
+        "installation": 0,
+        "total": 285000
+      },
+      "buyerEmail": "",
+      "customerData": null,
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-09dfb184-7698-43f4-90fc-14c5c0f5e126",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771256471131_38A66B"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-09dfb184-7698-43f4-90fc-14c5c0f5e126",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      }
+    },
+    {
+      "orderId": "ZM-1771266880298-A6E54E",
+      "externalReference": "ORDER_1771266880298_46C323",
+      "orderType": "tienda",
+      "createdAt": "2026-02-16T18:34:40.300Z",
+      "updatedAt": "2026-02-16T18:34:40.300Z",
+      "paymentMethod": "mercadopago",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "fulfillmentStatus": "pending_payment",
+      "estimatedLeadTime": "Pedido mixto: entrega estimada entre 10 y 20 días hábiles.",
+      "stockReserved": false,
+      "timeline": [
+        {
+          "status": "pending_payment",
+          "label": "Pendiente de pago",
+          "note": "Pedido registrado en Mercado Pago",
+          "at": "2026-02-16T18:34:41.113Z"
+        }
+      ],
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nordico",
+          "description": "Modulo de guardado para cocina/comedor",
+          "quantity": 1,
+          "unit_price": 230000,
+          "fulfillmentModel": "made_to_order",
+          "category": "Cocinas",
+          "weightKg": 52,
+          "volumeM3": 0.41
+        },
+        {
+          "id": "2",
+          "title": "Rack TV Minimalista",
+          "description": "Para TV 65\", cajones push-open",
+          "quantity": 1,
+          "unit_price": 210000,
+          "fulfillmentModel": "stock",
+          "category": "Living",
+          "weightKg": 42,
+          "volumeM3": 0.32
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior (hasta 260 kg)",
+        "shippingCost": 195000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0,
+        "shippingMeta": {
+          "freightTier": "hasta 260 kg",
+          "chargeableWeightKg": 182.5,
+          "totalWeightKg": 94,
+          "totalVolumeM3": 0.73
+        }
+      },
+      "totals": {
+        "subtotal": 440000,
+        "shipping": 195000,
+        "installation": 0,
+        "total": 635000
+      },
+      "buyerEmail": "tomasabalero@hotmail.com",
+      "customerData": null,
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-4f2725bd-0818-49c2-bc36-f6e817b9bab9",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771266880298_46C323"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-4f2725bd-0818-49c2-bc36-f6e817b9bab9",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      },
+      "preferenceId": "3202898734-4f2725bd-0818-49c2-bc36-f6e817b9bab9"
+    }
+  ]
+}

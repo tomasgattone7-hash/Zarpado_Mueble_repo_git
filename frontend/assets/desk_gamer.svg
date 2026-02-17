@@ -1,0 +1,19 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#fdfbf7"/>
+  
+  <!-- Desk Top -->
+  <rect x="150" y="250" width="500" height="20" fill="#222"/>
+  
+  <!-- Legs -->
+  <rect x="180" y="270" width="20" height="250" fill="#333"/>
+  <rect x="600" y="270" width="20" height="250" fill="#333"/>
+  
+  <!-- Monitor Stand -->
+  <rect x="300" y="240" width="200" height="10" fill="#222"/>
+  <rect x="320" y="150" width="160" height="90" fill="#111" stroke="#444"/> <!-- Screen -->
+  
+  <!-- LED Strip Effect -->
+  <rect x="150" y="270" width="500" height="4" fill="#00ffcc"/>
+  
+  <text x="400" y="560" font-family="Arial" font-size="24" text-anchor="middle" fill="#888">Escritorio Gamer (Negro Mate)</text>
+</svg>

@@ -1,0 +1,32 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#fdfbf7"/>
+  
+  <!-- Countertop -->
+  <rect x="150" y="200" width="500" height="20" fill="#e0e0e0"/>
+  
+  <!-- Cabinet Body -->
+  <rect x="160" y="220" width="480" height="300" fill="#ffffff" stroke="#d0d0d0" stroke-width="2"/>
+  
+  <!-- Vertical Divider -->
+  <line x1="320" y1="220" x2="320" y2="520" stroke="#d0d0d0" stroke-width="2"/>
+  <line x1="480" y1="220" x2="480" y2="520" stroke="#d0d0d0" stroke-width="2"/>
+  
+  <!-- Drawers (Left) -->
+  <rect x="170" y="230" width="140" height="80" fill="#f5f5f5" stroke="#ccc"/>
+  <rect x="230" y="240" width="20" height="4" fill="#aaa"/> <!-- Handle -->
+  
+  <rect x="170" y="320" width="140" height="80" fill="#f5f5f5" stroke="#ccc"/>
+  <rect x="230" y="330" width="20" height="4" fill="#aaa"/>
+  
+  <rect x="170" y="410" width="140" height="80" fill="#f5f5f5" stroke="#ccc"/>
+  <rect x="230" y="420" width="20" height="4" fill="#aaa"/>
+  
+  <!-- Doors (Center & Right) -->
+  <rect x="330" y="230" width="140" height="260" fill="#f5f5f5" stroke="#ccc"/>
+  <rect x="340" y="350" width="4" height="20" fill="#aaa"/> <!-- Handle vertical -->
+
+  <rect x="490" y="230" width="140" height="260" fill="#f5f5f5" stroke="#ccc"/>
+  <rect x="500" y="350" width="4" height="20" fill="#aaa"/>
+  
+  <text x="400" y="560" font-family="Arial" font-size="24" text-anchor="middle" fill="#888">Bajo Mesada Moderno (Melamina)</text>
+</svg>

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Evita indexar URLs internas de confirmación de pago
+Disallow: /pending.html
+Disallow: /success.html
+Disallow: /failure.html
+Disallow: /panel-interno
+Disallow: /estado-pedido
+
+Sitemap: https://zarpadomueble.com/sitemap.xml
