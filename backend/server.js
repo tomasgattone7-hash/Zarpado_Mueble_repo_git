@@ -462,6 +462,48 @@ function isSafeSqlIdentifier(value) {
     return /^[A-Za-z0-9_]+$/.test(String(value || ''));
 }
 
+async function doesColumnExistInTable(pool, schemaName, tableName, columnName) {
+    if (!pool || !schemaName || !tableName || !columnName) {
+        return false;
+    }
+
+    const [rows] = await pool.query(
+        `SELECT 1
+           FROM information_schema.columns
+          WHERE table_schema = ?
+            AND table_name = ?
+            AND column_name = ?
+          LIMIT 1`,
+        [schemaName, tableName, columnName]
+    );
+
+    return Array.isArray(rows) && rows.length > 0;
+}
+
+async function ensurePedidoColumn(pool, columnName, alterSql) {
+    if (!pool || !columnName || !alterSql) {
+        return false;
+    }
+
+    try {
+        const exists = await doesColumnExistInTable(pool, DB_NAME, 'pedidos', columnName);
+        if (exists) {
+            return false;
+        }
+
+        await pool.query(alterSql);
+        console.log(`🧩 Migración DB: columna pedidos.${columnName} creada.`);
+        return true;
+    } catch (error) {
+        if (error?.code === 'ER_DUP_FIELDNAME' || /duplicate column name/i.test(String(error?.message || ''))) {
+            console.info(`ℹ️ Migración DB: columna pedidos.${columnName} ya existía.`);
+            return false;
+        }
+        console.error(`❌ Migración DB: no se pudo asegurar pedidos.${columnName}: ${error.message}`);
+        throw error;
+    }
+}
+
 async function initializeMariaDb() {
     if (mariaDbInitialized) {
         return mariaDbEnabled;
@@ -532,14 +574,21 @@ async function initializeMariaDb() {
                 UNIQUE KEY uniq_order_id (order_id)
             ) ENGINE=InnoDB
         `);
-        await mariaDbPool.query(
-            'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS instalacion DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER envio'
+
+        await ensurePedidoColumn(
+            mariaDbPool,
+            'instalacion',
+            'ALTER TABLE pedidos ADD COLUMN instalacion DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER envio'
         );
-        await mariaDbPool.query(
-            'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS payment_status VARCHAR(40) NOT NULL DEFAULT \'pending\' AFTER estado'
+        await ensurePedidoColumn(
+            mariaDbPool,
+            'payment_status',
+            'ALTER TABLE pedidos ADD COLUMN payment_status VARCHAR(40) NOT NULL DEFAULT \'pending\' AFTER estado'
         );
-        await mariaDbPool.query(
-            'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS paid TINYINT(1) NOT NULL DEFAULT 0 AFTER payment_status'
+        await ensurePedidoColumn(
+            mariaDbPool,
+            'paid',
+            'ALTER TABLE pedidos ADD COLUMN paid TINYINT(1) NOT NULL DEFAULT 0 AFTER payment_status'
         );
 
         mariaDbEnabled = true;
@@ -547,6 +596,7 @@ async function initializeMariaDb() {
             `✅ DB conectada OK (${DB_HOST}:${DB_PORT}/${DB_NAME}) `
             + `(TLS: ${shouldUseMariaDbTls() ? 'sí' : 'no'}, rejectUnauthorized: ${ssl?.rejectUnauthorized === false ? 'false' : 'true'})`
         );
+        console.log('✅ DB lista');
         if (isRailwayInternalHost(DB_HOST)) {
             console.log(`🛤️ DB host interno Railway detectado: ${DB_HOST}`);
         }
