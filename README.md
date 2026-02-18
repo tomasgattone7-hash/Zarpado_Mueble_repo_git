@@ -66,6 +66,7 @@ El frontend usa:
 
 - `http://localhost:3000` cuando corre en `localhost`
 - `https://api.zarpadomueble.com` fuera de `localhost`
+- `window.ZM_API_BASE_URL` / `window.ZM_PROD_API_BASE_URL` / `window.ZM_LOCAL_API_BASE_URL` si se definen en `frontend/js/runtime-config.js` o por inyecciÃ³n en deploy.
 
 ## Variables de entorno (backend)
 
@@ -76,11 +77,15 @@ Mínimas para producción:
 - `MP_ACCESS_TOKEN`
 - `FRONTEND_URL=https://zarpadomueble.com`
 - `API_URL=https://api.zarpadomueble.com`
+- `FORMSPREE_CONTACT_ENDPOINT=https://formspree.io/f/maqdjjkq`
+- `FORMSPREE_MEDIDA_ENDPOINT=https://formspree.io/f/maqdjjkq`
 
 Importante:
 
 - No usa reCAPTCHA.
 - Anti-spam de formularios por backend: allowlist de `origin/referer`, rate limit por IP, honeypot (`website`/`company`) y validación de payload.
+- Los valores de ejemplo `MP_ACCESS_TOKEN` y `https://formspree.io/f/maqdjjkq` son de prueba. Deben reemplazarse por credenciales/endpoints propios en producción.
+- Todo valor sensible (tokens, claves SMTP, secretos de webhook) debe ir en variables de entorno. No hardcodear secretos en el código fuente.
 
 ## Endpoints principales
 
@@ -94,7 +99,7 @@ Importante:
 
 Form relay (Formspree):
 
-- `/forms/contacto` -> `xqedeven`
+- `/forms/contacto` -> `maqdjjkq`
 - `/forms/medida` -> `maqdjjkq`
 
 ## Deploy

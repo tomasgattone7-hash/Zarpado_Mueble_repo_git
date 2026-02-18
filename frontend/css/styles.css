@@ -125,6 +125,18 @@ img {
     text-align: right;
 }
 
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .section-tag {
     display: block;
     text-transform: uppercase;
@@ -392,6 +404,12 @@ img {
 
 .cart-icon {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 0;
+    padding: 0;
     cursor: pointer;
     font-size: 1.1rem;
     transition: var(--transition-base);
@@ -399,6 +417,12 @@ img {
 
 .cart-icon:hover {
     color: var(--color-accent);
+}
+
+.cart-icon:focus-visible,
+.hamburger:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
 }
 
 .cart-count {
@@ -584,9 +608,24 @@ img {
 }
 
 .hero-btn-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
     opacity: 0;
     transform: translateY(30px);
     animation: fadeInUp 1s forwards 1.1s;
+}
+
+.hero-content--no-cta {
+    display: grid;
+    justify-items: center;
+}
+
+.hero-content--no-cta .hero-subtitle,
+.hero-content--no-cta .section-desc {
+    margin-bottom: 0;
 }
 
 /* --- Animations --- */
@@ -707,6 +746,19 @@ img {
     margin-bottom: 1rem;
 }
 
+.catalog-search {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+    max-width: 740px;
+    margin: 0 auto 1rem;
+}
+
+.catalog-search .form-input {
+    margin: 0;
+}
+
 .btn-filter {
     border: 1px solid var(--color-border);
     background: transparent;
@@ -731,6 +783,13 @@ img {
     color: var(--color-text-muted);
     font-size: 0.88rem;
     margin-bottom: 1.5rem;
+}
+
+.catalog-noscript-note {
+    margin-top: 1rem;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.88rem;
 }
 
 .product-card {
@@ -892,6 +951,17 @@ textarea:focus-visible,
 
 .contact-submit-info.is-error {
     color: #ff8a8a;
+}
+
+.required-indicator {
+    color: #ff8a8a;
+    font-weight: 700;
+}
+
+.required-fields-note {
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
 }
 
 .quote-dropzone {
@@ -1836,6 +1906,14 @@ textarea:focus-visible,
 
     .section {
         padding: var(--spacing-section) 0;
+    }
+
+    .catalog-search {
+        grid-template-columns: 1fr;
+    }
+
+    .catalog-search .btn {
+        width: 100%;
     }
 
     .section-title {

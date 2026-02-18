@@ -36,20 +36,16 @@
 <body data-page="tienda">
     <header class="navbar"></header>
 
-    <section class="hero" style="height: 62vh; min-height: 420px;">
+    <section class="hero" data-hero-variant="tienda" style="height: 62vh; min-height: 420px;">
         <div class="hero-slider">
             <div class="hero-slide active" style="background-image: url('/assets/optimized/16-960.webp');"></div>
         </div>
-        <div class="hero-content">
+        <div class="hero-content hero-content--no-cta">
             <span class="section-tag" style="color: var(--color-accent); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">Tienda</span>
             <h1 class="hero-title" style="font-size: 3.2rem;">Muebles estándar listos para comprar</h1>
             <p class="section-desc" style="color: #eee; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                 Precio final, stock real y envío estimado para que compres con claridad desde el primer click.
             </p>
-            <div class="hero-btn-wrapper">
-                <a href="#catalogo" class="btn btn-primary">Ver productos</a>
-                <a href="/a-medida" class="btn btn-outline">Proyecto a medida</a>
-            </div>
         </div>
     </section>
 
@@ -70,17 +66,23 @@
                 <a href="/garantia" class="btn btn-outline" style="padding: 10px 16px;">Ver garantía</a>
             </article>
 
+            <form id="catalog-search-form" class="catalog-search reveal" role="search" action="/tienda" method="GET" aria-label="Buscar productos">
+                <label for="catalog-search-input" class="sr-only">Buscar productos</label>
+                <input id="catalog-search-input" name="q" type="search" class="form-input" placeholder="Buscar por nombre, categoria o especificacion" aria-label="Buscar en el catalogo">
+                <button id="catalog-search-btn" type="submit" class="btn btn-outline">Buscar</button>
+            </form>
+
             <div class="catalog-filters reveal" role="toolbar" aria-label="Filtros de tienda">
-                <button type="button" class="btn-filter js-catalog-filter active" data-filter="all" aria-pressed="true">Todos</button>
-                <button type="button" class="btn-filter js-catalog-filter" data-filter="Escritorios" aria-pressed="false">Escritorios</button>
-                <button type="button" class="btn-filter js-catalog-filter" data-filter="Cocinas" aria-pressed="false">Cocinas</button>
-                <button type="button" class="btn-filter js-catalog-filter" data-filter="Placards" aria-pressed="false">Placards</button>
-                <button type="button" class="btn-filter js-catalog-filter" data-filter="Living" aria-pressed="false">Living</button>
-                <button type="button" class="btn-filter js-catalog-filter" data-filter="Comedor" aria-pressed="false">Comedor</button>
+                <button type="button" class="btn-filter js-catalog-filter active" data-filter="all" aria-pressed="true" aria-label="Filtrar por todas las categorias">Todos</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Escritorios" aria-pressed="false" aria-label="Filtrar por categoria Escritorios">Escritorios</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Cocinas" aria-pressed="false" aria-label="Filtrar por categoria Cocinas">Cocinas</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Placards" aria-pressed="false" aria-label="Filtrar por categoria Placards">Placards</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Living" aria-pressed="false" aria-label="Filtrar por categoria Living">Living</button>
+                <button type="button" class="btn-filter js-catalog-filter" data-filter="Comedor" aria-pressed="false" aria-label="Filtrar por categoria Comedor">Comedor</button>
             </div>
-            <p id="catalogFilterResult" class="catalog-filter-result">Mostrando productos en todas las categorías.</p>
+            <p id="catalogFilterResult" class="catalog-filter-result">Mostrando productos en todas las categorias.</p>
             <p class="text-center" style="margin-bottom: 1rem; color: var(--color-text-muted);">
-                Ver landing por categoría:
+                Ver landing por categoria:
                 <a href="/tienda/escritorios">Escritorios</a> |
                 <a href="/tienda/cocinas">Cocinas</a> |
                 <a href="/tienda/placards">Placards</a> |
@@ -89,8 +91,175 @@
             </p>
 
             <div class="products-grid" id="products-grid">
-                <!-- Render por script.min.js -->
+
+                <article class="product-card reveal" data-category="Escritorios">
+                    <div class="product-image">
+                        <img src="/assets/desk_gamer.png" alt="Escritorio Gamer Pro" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Escritorio Gamer Pro</h4>
+                        <p class="product-specs">Melamina 18mm, pasacables y led frontal</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Escritorios</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> En stock - 4 unidades</p>
+                        <p class="product-meta"><strong>Logistica:</strong> En stock - Envio en 48/72 hs</p>
+                        <span class="product-price">$185.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="1" aria-label="Agregar Escritorio Gamer Pro al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Living">
+                    <div class="product-image">
+                        <img src="/assets/tv_rack.png" alt="Rack TV Minimalista" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Rack TV Minimalista</h4>
+                        <p class="product-specs">Para TV 65", cajones push-open</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Living</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> En stock - 3 unidades</p>
+                        <p class="product-meta"><strong>Logistica:</strong> En stock - Envio en 48/72 hs</p>
+                        <span class="product-price">$210.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="2" aria-label="Agregar Rack TV Minimalista al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Living">
+                    <div class="product-image">
+                        <img src="/assets/coffee_table.png" alt="Mesa Ratona Industrial" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Mesa Ratona Industrial</h4>
+                        <p class="product-specs">Estructura de hierro y tapa paraiso</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Living</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> En stock - 8 unidades</p>
+                        <p class="product-meta"><strong>Logistica:</strong> En stock - Envio en 48/72 hs</p>
+                        <span class="product-price">$95.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="3" aria-label="Agregar Mesa Ratona Industrial al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Living">
+                    <div class="product-image">
+                        <img src="/assets/library.png" alt="Biblioteca Moderna" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Biblioteca Moderna</h4>
+                        <p class="product-specs">Estanteria asimetrica en melamina</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Living</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> Fabricacion bajo pedido</p>
+                        <p class="product-meta"><strong>Logistica:</strong> Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles</p>
+                        <span class="product-price">$145.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="4" aria-label="Agregar Biblioteca Moderna al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Cocinas">
+                    <div class="product-image">
+                        <img src="/assets/sideboard.png" alt="Vajillero Nordico" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Vajillero Nordico</h4>
+                        <p class="product-specs">Modulo de guardado para cocina/comedor</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Cocinas</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> Fabricacion bajo pedido</p>
+                        <p class="product-meta"><strong>Logistica:</strong> Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles</p>
+                        <span class="product-price">$230.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="5" aria-label="Agregar Vajillero Nordico al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Escritorios">
+                    <div class="product-image">
+                        <img src="/assets/office_desk.png" alt="Escritorio Home Office" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Escritorio Home Office</h4>
+                        <p class="product-specs">Diseno compacto con cajonera movil</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Escritorios</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> En stock - 6 unidades</p>
+                        <p class="product-meta"><strong>Logistica:</strong> En stock - Envio en 48/72 hs</p>
+                        <span class="product-price">$120.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="6" aria-label="Agregar Escritorio Home Office al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Placards">
+                    <div class="product-image">
+                        <img src="/assets/cabinet.webp" alt="Gabinete Multiuso" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Gabinete Multiuso</h4>
+                        <p class="product-specs">Guardado versatil para dormitorio o vestidor</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Placards</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> Fabricacion bajo pedido</p>
+                        <p class="product-meta"><strong>Logistica:</strong> Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles</p>
+                        <span class="product-price">$180.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="7" aria-label="Agregar Gabinete Multiuso al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Comedor">
+                    <div class="product-image">
+                        <img src="/assets/chair.webp" alt="Silla de Diseno" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Silla de Diseno</h4>
+                        <p class="product-specs">Ergonomica con estructura reforzada</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Comedor</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> En stock - 12 unidades</p>
+                        <p class="product-meta"><strong>Logistica:</strong> En stock - Envio en 48/72 hs</p>
+                        <span class="product-price">$85.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="8" aria-label="Agregar Silla de Diseno al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Comedor">
+                    <div class="product-image">
+                        <img src="/assets/table.webp" alt="Mesa Comedor" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Mesa Comedor</h4>
+                        <p class="product-specs">Para 6 personas, tapa resistente</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Comedor</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> Fabricacion bajo pedido</p>
+                        <p class="product-meta"><strong>Logistica:</strong> Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles</p>
+                        <span class="product-price">$250.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="9" aria-label="Agregar Mesa Comedor al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Living">
+                    <div class="product-image">
+                        <img src="/assets/tv_unit.webp" alt="Mueble TV Flotante" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Mueble TV Flotante</h4>
+                        <p class="product-specs">Diseno aereo con pasacables oculto</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Living</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> Fabricacion bajo pedido</p>
+                        <p class="product-meta"><strong>Logistica:</strong> Fabricacion bajo pedido - Entrega estimada: 10 a 20 dias habiles</p>
+                        <span class="product-price">$200.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="10" aria-label="Agregar Mueble TV Flotante al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
+
+                <article class="product-card reveal" data-category="Escritorios">
+                    <div class="product-image">
+                        <img src="/assets/melamine_desk.webp" alt="Escritorio Melamina" loading="lazy" decoding="async" width="1024" height="1024">
+                    </div>
+                    <div class="product-details">
+                        <h4 class="product-name">Escritorio Melamina</h4>
+                        <p class="product-specs">Formato clasico para estudio</p>
+                        <p class="product-meta"><strong>Categoria:</strong> Escritorios</p>
+                        <p class="product-meta"><strong>Disponibilidad:</strong> En stock - 7 unidades</p>
+                        <p class="product-meta"><strong>Logistica:</strong> En stock - Envio en 48/72 hs</p>
+                        <span class="product-price">$130.000</span>
+                        <button type="button" class="btn-add-cart js-static-add-to-cart" data-product-id="11" aria-label="Agregar Escritorio Melamina al carrito">Agregar al carrito</button>
+                    </div>
+                </article>
             </div>
+            <noscript>
+                <p class="catalog-noscript-note">Sin JavaScript no se aplican filtros ni busqueda, pero podes ver el catalogo completo en esta pagina.</p>
+            </noscript>
         </div>
     </section>
 
@@ -152,8 +321,15 @@
     </script>
 
     <script src="/js/site-shell.min.js"></script>
+    <script src="/js/runtime-config.js"></script>
     <script src="/js/script.min.js"></script>
     <script src="/js/logo-theme.min.js" defer></script>
 </body>
 
 </html>
+
+
+
+
+
+

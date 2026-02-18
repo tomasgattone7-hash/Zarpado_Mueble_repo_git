@@ -14,15 +14,41 @@ function syncUiOverlayState() {
     document.body.classList.toggle('ui-locked', isMobileViewport() && (menuOpen || cartOpen));
 }
 
+function syncMenuExpandedState() {
+    const isMenuOpen = Boolean(navMenu?.classList.contains('active'));
+    if (!hamburger) {
+        return;
+    }
+
+    if (!hamburger.getAttribute('aria-controls')) {
+        hamburger.setAttribute('aria-controls', navMenu?.id || 'primary-navigation');
+    }
+
+    hamburger.setAttribute('aria-expanded', String(isMenuOpen));
+}
+
+function syncCartExpandedState() {
+    const isCartOpen = Boolean(cartSidebar?.classList.contains('open'));
+    document.querySelectorAll('.cart-icon.js-toggle-cart').forEach(trigger => {
+        if (!trigger.getAttribute('aria-controls')) {
+            trigger.setAttribute('aria-controls', 'cartSidebar');
+        }
+
+        trigger.setAttribute('aria-expanded', String(isCartOpen));
+    });
+}
+
 function closeMobileMenu() {
     navMenu?.classList.remove('active');
     hamburger?.classList.remove('active');
+    syncMenuExpandedState();
     syncUiOverlayState();
 }
 
 function setCartOpenState(isOpen) {
     if (!cartSidebar) return;
     cartSidebar.classList.toggle('open', Boolean(isOpen));
+    syncCartExpandedState();
     syncUiOverlayState();
 }
 
@@ -34,13 +60,25 @@ const THEME_STORAGE_KEY = 'zm_theme';
 const LIGHT_THEME = 'light';
 const DARK_THEME = 'dark';
 const THEME_MEDIA_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
-const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
-const LOCAL_API_BASE_URL = 'http://localhost:3000';
+const DEFAULT_PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
+const DEFAULT_LOCAL_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FETCH_TIMEOUT_MS = 12000;
 
 function normalizeApiBaseUrl(value) {
     return String(value || '').trim().replace(/\/+$/, '');
 }
+
+function getRuntimeConfigValue(globalKey, fallbackValue) {
+    if (typeof window === 'undefined') {
+        return normalizeApiBaseUrl(fallbackValue);
+    }
+
+    const runtimeValue = normalizeApiBaseUrl(window[globalKey]);
+    return runtimeValue || normalizeApiBaseUrl(fallbackValue);
+}
+
+const PROD_API_BASE_URL = getRuntimeConfigValue('ZM_PROD_API_BASE_URL', DEFAULT_PROD_API_BASE_URL);
+const LOCAL_API_BASE_URL = getRuntimeConfigValue('ZM_LOCAL_API_BASE_URL', DEFAULT_LOCAL_API_BASE_URL);
 
 function resolveApiBaseUrl() {
     if (typeof window === 'undefined' || !window.location) {
@@ -233,6 +271,7 @@ if (hamburger && navMenu) {
         const shouldOpen = !navMenu.classList.contains('active');
         navMenu.classList.toggle('active', shouldOpen);
         hamburger.classList.toggle('active', shouldOpen);
+        syncMenuExpandedState();
         if (shouldOpen) {
             closeCart();
         }
@@ -279,23 +318,36 @@ document.addEventListener('click', event => {
 
 function setupAccessibleTriggers() {
     const clickableElements = [
-        { element: document.querySelector('.cart-icon'), label: 'Abrir carrito' },
-        { element: document.querySelector('.hamburger'), label: 'Abrir menu' }
+        { element: document.querySelector('.cart-icon'), label: 'Abrir carrito', controls: 'cartSidebar' },
+        { element: document.querySelector('.hamburger'), label: 'Abrir menu', controls: navMenu?.id || 'primary-navigation' }
     ];
 
-    clickableElements.forEach(({ element, label }) => {
+    clickableElements.forEach(({ element, label, controls }) => {
         if (!element) return;
 
-        element.setAttribute('role', 'button');
         element.setAttribute('tabindex', '0');
-        element.setAttribute('aria-label', label);
-        element.addEventListener('keydown', event => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                element.click();
-            }
-        });
+        if (!element.getAttribute('aria-label')) {
+            element.setAttribute('aria-label', label);
+        }
+
+        if (controls && !element.getAttribute('aria-controls')) {
+            element.setAttribute('aria-controls', controls);
+        }
+
+        const isNativeButton = element.tagName === 'BUTTON';
+        if (!isNativeButton) {
+            element.setAttribute('role', 'button');
+            element.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    element.click();
+                }
+            });
+        }
     });
+
+    syncMenuExpandedState();
+    syncCartExpandedState();
 
     const cartCount = document.querySelector('.cart-count');
     if (cartCount) {
@@ -514,9 +566,14 @@ function buildCartProductMap(list) {
 
 let CART_PRODUCT_MAP = buildCartProductMap(products);
 
-const INITIAL_PRODUCTS_VISIBLE = 12;
-let visibleProductsCount = INITIAL_PRODUCTS_VISIBLE;
+const DEFAULT_CATALOG_PAGE_SIZE = 12;
+const CATALOG_LOAD_MORE_STEP = 8;
+const CART_MAX_UNITS_PER_PRODUCT = 10;
+let catalogPage = 1;
+let catalogPageSize = DEFAULT_CATALOG_PAGE_SIZE;
 let activeCatalogFilter = 'all';
+let activeCatalogSearch = '';
+let lastFilteredProductsCount = 0;
 const PRODUCT_IMAGE_SIZES = '(max-width: 768px) 92vw, (max-width: 1200px) 45vw, 280px';
 const PRODUCT_RESPONSIVE_VARIANTS = {
     cabinet: [360, 640, 960],
@@ -723,12 +780,48 @@ function isValidEmailAddress(email) {
     return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(String(email || '').trim());
 }
 
-function setContactSubmittingState(isSubmitting) {
+function setContactSubmittingState(isSubmitting, submitSucceeded = false) {
     const submitButton = document.getElementById('contact-submit-btn');
     if (!submitButton) return;
 
-    submitButton.disabled = isSubmitting;
-    submitButton.textContent = isSubmitting ? 'Enviando…' : 'Solicitar Presupuesto';
+    submitButton.disabled = Boolean(isSubmitting || submitSucceeded);
+    if (submitSucceeded) {
+        submitButton.textContent = 'Enviado';
+        return;
+    }
+
+    submitButton.textContent = isSubmitting ? 'Enviando...' : 'Solicitar Presupuesto';
+}
+
+function parseFormspreeErrorMessage(payload, fallbackMessage) {
+    const normalizedFallback = String(fallbackMessage || 'No se pudo completar el envio.').trim();
+    if (!payload || typeof payload !== 'object') {
+        return normalizedFallback;
+    }
+
+    const directError = String(payload.error || '').trim();
+    if (directError) {
+        return directError;
+    }
+
+    if (!Array.isArray(payload.errors) || payload.errors.length === 0) {
+        return normalizedFallback;
+    }
+
+    const firstError = payload.errors[0];
+    const fieldLabel = String(firstError?.field || '').trim();
+    const message = String(firstError?.message || '').trim();
+    if (!fieldLabel) {
+        return message || normalizedFallback;
+    }
+
+    return message ? `${fieldLabel}: ${message}` : fieldLabel;
+}
+
+function isInternalFormEndpoint(endpoint) {
+    const normalizedEndpoint = String(endpoint || '').trim().toLowerCase();
+    return normalizedEndpoint.startsWith('/forms/')
+        || normalizedEndpoint.includes('/forms/');
 }
 
 function initContactFormSubmission() {
@@ -737,38 +830,68 @@ function initContactFormSubmission() {
 
     let isSubmitting = false;
     contactForm.addEventListener('submit', async event => {
-        event.preventDefault();
-        if (isSubmitting) return;
+        if (isSubmitting) {
+            event.preventDefault();
+            return;
+        }
+
+        // Progressive enhancement: if fetch/FormData are unavailable, keep native form submit.
+        if (typeof window.fetch !== 'function' || typeof window.FormData !== 'function') {
+            return;
+        }
 
         const formData = new FormData(contactForm);
+        const fullName = String(formData.get('nombre') || '').trim();
         const email = String(formData.get('email') || '').trim();
-        const message = String(formData.get('message') || '').trim();
+        const inquiryType = String(formData.get('tipoConsulta') || '').trim();
+        const message = String(formData.get('mensaje') || '').trim();
+
+        if (fullName.length < 2) {
+            event.preventDefault();
+            setContactSubmitInfo('Ingresá tu nombre y apellido.', 'error');
+            alert('Revisá el formulario antes de enviar.');
+            return;
+        }
 
         if (!isValidEmailAddress(email)) {
+            event.preventDefault();
             setContactSubmitInfo('Ingresá un email válido.', 'error');
+            alert('Revisá el formulario antes de enviar.');
+            return;
+        }
+
+        if (!inquiryType) {
+            event.preventDefault();
+            setContactSubmitInfo('Seleccioná el tipo de consulta.', 'error');
+            alert('Revisá el formulario antes de enviar.');
             return;
         }
 
         if (message.length < 10) {
+            event.preventDefault();
             setContactSubmitInfo('El mensaje debe tener al menos 10 caracteres.', 'error');
+            alert('Revisá el formulario antes de enviar.');
             return;
         }
 
+        event.preventDefault();
         isSubmitting = true;
+        let submitSucceeded = false;
         setContactSubmittingState(true);
-        setContactSubmitInfo('Enviando…', 'loading');
+        setContactSubmitInfo('Enviando...', 'loading');
 
         try {
-            const payload = Object.fromEntries(formData.entries());
-
-            const response = await fetchWithTimeout(buildApiUrl('/forms/contacto'), {
+            const endpoint = String(
+                contactForm.getAttribute('action')
+                || '/forms/contacto'
+            ).trim();
+            const response = await fetchWithTimeout(endpoint, {
                 method: 'POST',
                 headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json'
+                    Accept: 'application/json'
                 },
-                body: JSON.stringify(payload)
-            }, 15000);
+                body: formData
+            }, 20000);
 
             let responsePayload = {};
             try {
@@ -777,27 +900,60 @@ function initContactFormSubmission() {
                 responsePayload = {};
             }
 
-            if (response.ok && responsePayload.ok === true) {
+            if (response.ok) {
                 contactForm.reset();
-                setContactSubmitInfo('Mensaje enviado correctamente ✅', 'success');
+                setContactSubmitInfo('Consulta enviada con exito.', 'success');
+                setContactSubmittingState(false, true);
+                submitSucceeded = true;
+                alert('¡Mensaje enviado! Te responderemos pronto.');
                 return;
             }
 
-            setContactSubmitInfo(
-                String(responsePayload?.error || '').trim() || 'Error al enviar. Intentá nuevamente.',
-                'error'
-            );
+            const directErrorMessage = parseFormspreeErrorMessage(responsePayload, 'No pudimos enviar tu consulta.');
+            if (isInternalFormEndpoint(endpoint)) {
+                throw new Error(directErrorMessage);
+            }
+
+            // Fallback interno: evita error por bloqueo AJAX/reCAPTCHA de Formspree.
+            const backendResponse = await fetchWithTimeout(buildApiUrl('/forms/contacto'), {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json'
+                },
+                body: formData
+            }, 20000);
+
+            let backendPayload = {};
+            try {
+                backendPayload = await backendResponse.json();
+            } catch (error) {
+                backendPayload = {};
+            }
+
+            if (backendResponse.ok && backendPayload?.ok !== false) {
+                contactForm.reset();
+                setContactSubmitInfo('Consulta enviada con exito.', 'success');
+                setContactSubmittingState(false, true);
+                submitSucceeded = true;
+                alert('¡Mensaje enviado! Te responderemos pronto.');
+                return;
+            }
+
+            throw new Error(parseFormspreeErrorMessage(backendPayload, directErrorMessage));
         } catch (error) {
             const fallbackMessage = error?.name === 'AbortError'
-                ? 'El servidor demoró en responder. Intentá nuevamente.'
-                : 'Error al enviar. Intentá nuevamente.';
+                ? 'El servidor demoro en responder. Intenta nuevamente.'
+                : 'No pudimos enviar tu consulta.';
             const message = error?.name === 'AbortError'
                 ? fallbackMessage
                 : (error?.message || fallbackMessage);
             setContactSubmitInfo(message, 'error');
+            alert('Ocurrió un error al enviar. Intenta de nuevo.');
         } finally {
             isSubmitting = false;
-            setContactSubmittingState(false);
+            if (!submitSucceeded) {
+                setContactSubmittingState(false);
+            }
         }
     });
 }
@@ -824,12 +980,17 @@ function setQuoteSubmitInfo(message, type = 'neutral') {
     if (type === 'loading') submitInfo.classList.add('is-loading');
 }
 
-function setQuoteSubmittingState(isSubmitting) {
+function setQuoteSubmittingState(isSubmitting, submitSucceeded = false) {
     const submitButton = document.getElementById('quote-submit-btn');
     if (!submitButton) return;
 
-    submitButton.disabled = isSubmitting;
-    submitButton.textContent = isSubmitting ? 'Enviando...' : 'Enviar cotización';
+    submitButton.disabled = Boolean(isSubmitting || submitSucceeded);
+    if (submitSucceeded) {
+        submitButton.textContent = 'Enviado';
+        return;
+    }
+
+    submitButton.textContent = isSubmitting ? 'Enviando...' : 'Enviar cotizacion';
 }
 
 function formatArPhoneMask(rawValue) {
@@ -1074,14 +1235,14 @@ function initQuoteFormSubmission() {
         if (isSubmitting) return;
 
         const readOnlyFormData = new FormData(quoteForm);
-        const fullName = String(readOnlyFormData.get('fullName') || '').trim();
+        const fullName = String(readOnlyFormData.get('nombre') || '').trim();
         const email = String(readOnlyFormData.get('email') || '').trim();
-        const phone = String(readOnlyFormData.get('phone') || '').trim();
-        const cityNeighborhood = String(readOnlyFormData.get('cityNeighborhood') || '').trim();
-        const province = String(readOnlyFormData.get('province') || '').trim();
-        const furnitureType = String(readOnlyFormData.get('furnitureType') || '').trim();
-        const approximateMeasures = String(readOnlyFormData.get('approximateMeasures') || '').trim();
-        const privacyAccepted = String(readOnlyFormData.get('privacyAccepted') || '').trim();
+        const phone = String(readOnlyFormData.get('telefono') || '').trim();
+        const cityNeighborhood = String(readOnlyFormData.get('ciudad') || '').trim();
+        const province = String(readOnlyFormData.get('provincia') || '').trim();
+        const furnitureType = String(readOnlyFormData.get('tipoMueble') || '').trim();
+        const approximateMeasures = String(readOnlyFormData.get('medidas') || '').trim();
+        const privacyAccepted = String(readOnlyFormData.get('aceptaPrivacidad') || '').trim();
         const filesError = validateQuoteFiles(quoteSelectedFiles);
 
         if (fullName.length < 2) {
@@ -1131,17 +1292,22 @@ function initQuoteFormSubmission() {
         }
 
         isSubmitting = true;
+        let submitSucceeded = false;
         setQuoteSubmittingState(true);
-        setQuoteSubmitInfo('Enviando solicitud de cotización...', 'loading');
+        setQuoteSubmitInfo('Enviando solicitud de cotizacion...', 'loading');
 
         try {
+            const endpoint = String(
+                quoteForm.getAttribute('action')
+                || '/forms/medida'
+            ).trim();
             const payloadFormData = new FormData(quoteForm);
-            payloadFormData.delete('photos');
+            payloadFormData.delete('adjuntos');
             quoteSelectedFiles.forEach(file => {
-                payloadFormData.append('photos', file, file.name);
+                payloadFormData.append('adjuntos', file, file.name);
             });
 
-            const response = await fetchWithTimeout(buildApiUrl('/forms/medida'), {
+            const response = await fetchWithTimeout(endpoint, {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json'
@@ -1156,20 +1322,49 @@ function initQuoteFormSubmission() {
                 payload = {};
             }
 
-            if (!response.ok || payload?.ok === false) {
-                throw new Error(payload.error || 'No pudimos enviar la solicitud de cotización.');
+            if (!response.ok) {
+                if (isInternalFormEndpoint(endpoint)) {
+                    const directErrorMessage = parseFormspreeErrorMessage(payload, 'No pudimos enviar la solicitud de cotizacion.');
+                    throw new Error(directErrorMessage);
+                }
+
+                const backendPayloadFormData = new FormData(quoteForm);
+                backendPayloadFormData.delete('adjuntos');
+                backendPayloadFormData.delete('photos');
+                quoteSelectedFiles.forEach(file => {
+                    backendPayloadFormData.append('photos', file, file.name);
+                });
+
+                const backendResponse = await fetchWithTimeout(buildApiUrl('/forms/medida'), {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json'
+                    },
+                    body: backendPayloadFormData
+                }, 20000);
+
+                let backendPayload = {};
+                try {
+                    backendPayload = await backendResponse.json();
+                } catch (error) {
+                    backendPayload = {};
+                }
+
+                if (!backendResponse.ok || backendPayload?.ok === false) {
+                    const directErrorMessage = parseFormspreeErrorMessage(payload, 'No pudimos enviar la solicitud de cotizacion.');
+                    throw new Error(parseFormspreeErrorMessage(backendPayload, directErrorMessage));
+                }
             }
 
             quoteForm.reset();
             quoteSelectedFiles = [];
             renderQuoteSelectedFiles();
-            setQuoteSubmitInfo(
-                payload.message || 'Solicitud enviada. Te vamos a contactar dentro de las próximas 24 horas hábiles.',
-                'success'
-            );
+            setQuoteSubmitInfo('Cotizacion enviada con exito.', 'success');
+            setQuoteSubmittingState(false, true);
+            submitSucceeded = true;
         } catch (error) {
             const fallbackMessage = error?.name === 'AbortError'
-                ? 'El servidor demoró en responder. Intentá nuevamente.'
+                ? 'El servidor demoro en responder. Intenta nuevamente.'
                 : 'No pudimos enviar la solicitud de cotización.';
             const message = error?.name === 'AbortError'
                 ? fallbackMessage
@@ -1177,7 +1372,9 @@ function initQuoteFormSubmission() {
             setQuoteSubmitInfo(message, 'error');
         } finally {
             isSubmitting = false;
-            setQuoteSubmittingState(false);
+            if (!submitSucceeded) {
+                setQuoteSubmittingState(false);
+            }
         }
     });
 }
@@ -1194,7 +1391,7 @@ function sanitizeCart(rawCart) {
             const quantity = Number.parseInt(item?.quantity, 10);
             const catalogProduct = CART_PRODUCT_MAP[id];
 
-            if (!catalogProduct || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+            if (!catalogProduct || !Number.isInteger(quantity) || quantity < 1 || quantity > CART_MAX_UNITS_PER_PRODUCT) {
                 return null;
             }
 
@@ -1226,29 +1423,96 @@ function persistCart(rawCart) {
     }
 }
 
-function renderProducts() {
+function sanitizeCatalogPageNumber(value) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function sanitizeCatalogPageSize(value) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+        return DEFAULT_CATALOG_PAGE_SIZE;
+    }
+
+    return Math.min(parsed, 36);
+}
+
+function normalizeCatalogSearchTerm(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function getFilteredStoreProducts(filter = activeCatalogFilter, searchTerm = activeCatalogSearch) {
+    const storeProducts = products.filter(product => product.action === 'cart');
+    const normalizedFilter = String(filter || 'all').trim();
+    const normalizedSearch = normalizeCatalogSearchTerm(searchTerm);
+    const categoryFilteredProducts = normalizedFilter === 'all'
+        ? storeProducts
+        : storeProducts.filter(product => product.category === normalizedFilter);
+
+    if (!normalizedSearch) {
+        return categoryFilteredProducts;
+    }
+
+    return categoryFilteredProducts.filter(product => {
+        const searchableValues = [
+            product.name,
+            product.specs,
+            product.category
+        ].map(value => String(value || '').toLowerCase());
+
+        return searchableValues.some(value => value.includes(normalizedSearch));
+    });
+}
+
+function updateCatalogFilterButtonsState() {
+    document.querySelectorAll('.js-catalog-filter').forEach(button => {
+        const isActive = button.dataset.filter === activeCatalogFilter;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+    });
+}
+
+function updateCatalogResultCounter(totalProductsCount) {
+    const resultCounter = document.getElementById('catalogFilterResult');
+    if (!resultCounter) {
+        return;
+    }
+
+    const suffix = totalProductsCount === 1 ? 'producto' : 'productos';
+    const selectedCategory = activeCatalogFilter === 'all' ? 'todas las categorias' : activeCatalogFilter;
+    const searchHint = activeCatalogSearch
+        ? ` y busqueda "${activeCatalogSearch}"`
+        : '';
+    resultCounter.textContent = `Mostrando ${totalProductsCount} ${suffix} en ${selectedCategory}${searchHint}.`;
+}
+
+function renderProducts(options = {}) {
     const grid = document.getElementById('products-grid');
     if (!grid) return;
 
-    const storeProducts = products.filter(product => product.action === 'cart');
-    const filteredProducts = activeCatalogFilter === 'all'
-        ? storeProducts
-        : storeProducts.filter(product => product.category === activeCatalogFilter);
-
-    const visibleProducts = filteredProducts.slice(0, visibleProductsCount);
-
-    const resultCounter = document.getElementById('catalogFilterResult');
-    if (resultCounter) {
-        const suffix = filteredProducts.length === 1 ? 'producto' : 'productos';
-        const selectedCategory = activeCatalogFilter === 'all' ? 'todas las categorías' : activeCatalogFilter;
-        resultCounter.textContent = `Mostrando ${filteredProducts.length} ${suffix} en ${selectedCategory}.`;
+    if (options.filter !== undefined) {
+        activeCatalogFilter = String(options.filter || 'all').trim() || 'all';
     }
+    if (options.searchTerm !== undefined) {
+        activeCatalogSearch = String(options.searchTerm || '').trim();
+    }
+
+    catalogPage = sanitizeCatalogPageNumber(options.page ?? catalogPage);
+    catalogPageSize = sanitizeCatalogPageSize(options.pageSize ?? catalogPageSize);
+
+    const filteredProducts = getFilteredStoreProducts(activeCatalogFilter, activeCatalogSearch);
+    lastFilteredProductsCount = filteredProducts.length;
+    const visibleCount = Math.min(lastFilteredProductsCount, catalogPage * catalogPageSize);
+    const visibleProducts = filteredProducts.slice(0, visibleCount);
+
+    updateCatalogFilterButtonsState();
+    updateCatalogResultCounter(lastFilteredProductsCount);
 
     grid.innerHTML = visibleProducts.map((product, index) => {
         const delay = (index % 6) * 0.1;
         const isMadeToOrder = product.fulfillmentModel === 'made_to_order';
         const stockLabel = isMadeToOrder
-            ? 'Fabricación bajo pedido'
+            ? 'Fabricacion bajo pedido'
             : `En stock - ${Number.parseInt(product.stock, 10) || 0} unidades`;
         const shippingLabel = String(product.availabilityMessage || product.shippingEstimate || '').trim();
 
@@ -1260,18 +1524,18 @@ function renderProducts() {
                 <div class="product-details">
                     <h4 class="product-name">${product.name}</h4>
                     <p class="product-specs">${product.specs}</p>
-                    <p class="product-meta"><strong>Categoría:</strong> ${product.category}</p>
+                    <p class="product-meta"><strong>Categoria:</strong> ${product.category}</p>
                     <p class="product-meta"><strong>Disponibilidad:</strong> ${stockLabel}</p>
-                    <p class="product-meta"><strong>Logística:</strong> ${shippingLabel}</p>
+                    <p class="product-meta"><strong>Logistica:</strong> ${shippingLabel}</p>
                     <span class="product-price">$${product.price.toLocaleString('es-AR')}</span>
-                    <button class="btn-add-cart js-add-cart" data-product-id="${product.id}">Agregar al carrito</button>
+                    <button class="btn-add-cart js-add-cart" data-product-id="${product.id}" aria-label="Agregar ${product.name} al carrito">Agregar al carrito</button>
                 </div>
             </div>
         `;
     }).join('');
 
     bindCatalogActions(grid);
-    renderLoadMoreButton(grid, filteredProducts.length);
+    renderLoadMoreButton(grid, lastFilteredProductsCount);
 
     setTimeout(() => {
         grid.querySelectorAll('.reveal').forEach(observeRevealElement);
@@ -1294,6 +1558,7 @@ function renderLoadMoreButton(grid, totalProductsCount) {
         previousWrapper.remove();
     }
 
+    const visibleProductsCount = catalogPage * catalogPageSize;
     if (visibleProductsCount >= totalProductsCount) {
         return;
     }
@@ -1301,13 +1566,14 @@ function renderLoadMoreButton(grid, totalProductsCount) {
     const wrapper = document.createElement('div');
     wrapper.id = 'catalog-load-more';
     wrapper.className = 'catalog-load-more';
-    wrapper.innerHTML = '<button type="button" id="loadMoreProductsBtn" class="btn btn-outline">Ver más productos</button>';
+    wrapper.innerHTML = '<button type="button" id="loadMoreProductsBtn" class="btn btn-outline">Ver mas productos</button>';
     grid.parentElement.appendChild(wrapper);
 
     const loadMoreButton = document.getElementById('loadMoreProductsBtn');
     loadMoreButton?.addEventListener('click', () => {
-        visibleProductsCount = Math.min(visibleProductsCount + 8, totalProductsCount);
-        renderProducts();
+        const nextVisibleCount = Math.min(visibleProductsCount + CATALOG_LOAD_MORE_STEP, totalProductsCount);
+        const nextPage = Math.ceil(nextVisibleCount / catalogPageSize);
+        renderProducts({ page: nextPage });
     });
 }
 
@@ -1330,31 +1596,94 @@ function initCatalogFilters() {
         }
     }
 
+    const querySearch = String(urlParams.get('q') || '').trim();
+    if (querySearch) {
+        activeCatalogSearch = querySearch;
+    }
+
+    catalogPage = sanitizeCatalogPageNumber(urlParams.get('page') || catalogPage);
+    catalogPageSize = sanitizeCatalogPageSize(urlParams.get('pageSize') || catalogPageSize);
+
     filterButtons.forEach(button => {
+        const filterLabel = String(button.dataset.filter || 'all');
+        button.setAttribute(
+            'aria-label',
+            filterLabel === 'all'
+                ? 'Filtrar por todas las categorias'
+                : `Filtrar por categoria ${filterLabel}`
+        );
+
         button.addEventListener('click', () => {
             const nextFilter = String(button.dataset.filter || 'all');
-            activeCatalogFilter = nextFilter;
-            visibleProductsCount = INITIAL_PRODUCTS_VISIBLE;
-
-            filterButtons.forEach(item => {
-                const isActive = item.dataset.filter === nextFilter;
-                item.classList.toggle('active', isActive);
-                item.setAttribute('aria-pressed', String(isActive));
+            renderProducts({
+                filter: nextFilter,
+                page: 1
             });
-
-            renderProducts();
         });
     });
 
-    filterButtons.forEach(item => {
-        const isActive = item.dataset.filter === activeCatalogFilter;
-        item.classList.toggle('active', isActive);
-        item.setAttribute('aria-pressed', String(isActive));
+    const searchInput = document.getElementById('catalog-search-input');
+    if (searchInput && activeCatalogSearch) {
+        searchInput.value = activeCatalogSearch;
+    }
+
+    updateCatalogFilterButtonsState();
+}
+
+function initCatalogSearch() {
+    const searchForm = document.getElementById('catalog-search-form');
+    const searchInput = document.getElementById('catalog-search-input');
+    const searchButton = document.getElementById('catalog-search-btn');
+    if (!searchInput) {
+        return;
+    }
+
+    const runSearch = () => {
+        renderProducts({
+            searchTerm: searchInput.value,
+            page: 1
+        });
+    };
+
+    searchInput.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        runSearch();
+    });
+
+    searchInput.addEventListener('input', () => {
+        if (String(searchInput.value || '').trim()) {
+            return;
+        }
+
+        runSearch();
+    });
+
+    searchForm?.addEventListener('submit', event => {
+        event.preventDefault();
+        runSearch();
+    });
+
+    searchButton?.addEventListener('click', event => {
+        if (searchForm) {
+            event.preventDefault();
+        }
+
+        runSearch();
     });
 }
 
 function bindStaticAddToCartButtons() {
     document.querySelectorAll('.js-static-add-to-cart').forEach(button => {
+        const productId = Number.parseInt(button.dataset.productId, 10);
+        const product = CART_PRODUCT_MAP[productId];
+        if (product && !button.getAttribute('aria-label')) {
+            button.setAttribute('aria-label', `Agregar ${product.name} al carrito`);
+        }
+
         button.addEventListener('click', () => {
             addToCart(button.dataset.productId);
         });
@@ -2133,7 +2462,7 @@ function addToCart(id) {
     const existingItem = cart.find(item => item.id === product.id);
 
     if (existingItem) {
-        existingItem.quantity = Math.min(existingItem.quantity + 1, 10);
+        existingItem.quantity = Math.min(existingItem.quantity + 1, CART_MAX_UNITS_PER_PRODUCT);
     } else {
         cart.push({
             id: product.id,
@@ -2184,8 +2513,8 @@ function updateQuantity(id, change) {
         item.quantity += change;
         if (item.quantity <= 0) {
             removeFromCart(numericId);
-        } else if (item.quantity > 10) {
-            item.quantity = 10;
+        } else if (item.quantity > CART_MAX_UNITS_PER_PRODUCT) {
+            item.quantity = CART_MAX_UNITS_PER_PRODUCT;
             updateCart();
         } else {
             updateCart();
@@ -2293,23 +2622,130 @@ async function checkout(currentEvent = null) {
     }
 }
 
+const HERO_VARIANT_ACTIONS = Object.freeze({
+    home: [
+        { href: '/tienda', label: 'Ver productos', className: 'btn btn-primary' },
+        { href: '/a-medida', label: 'Proyecto a medida', className: 'btn btn-outline' }
+    ],
+    amedida: [
+        { href: '#form-cotizacion', label: 'Solicitar cotización', className: 'btn btn-primary' }
+    ],
+    tienda: []
+});
+
+function normalizeHeroVariant(rawVariant) {
+    const normalized = String(rawVariant || '').trim().toLowerCase();
+    if (!normalized) {
+        return '';
+    }
+
+    if (normalized === 'a-medida' || normalized === 'a_medida') {
+        return 'amedida';
+    }
+
+    return normalized;
+}
+
+function createHeroCtaButton(actionConfig) {
+    const link = document.createElement('a');
+    link.href = String(actionConfig?.href || '#').trim() || '#';
+    link.className = String(actionConfig?.className || 'btn').trim();
+    link.textContent = String(actionConfig?.label || '').trim();
+    return link;
+}
+
+function applyHeroVariantLayout() {
+    const heroSection = document.querySelector('.hero');
+    const heroContent = heroSection?.querySelector('.hero-content');
+    if (!heroSection || !heroContent) {
+        return;
+    }
+
+    const variant = normalizeHeroVariant(heroSection.dataset.heroVariant);
+    let actionWrapper = heroContent.querySelector('.hero-btn-wrapper');
+    const hasKnownVariant = Object.prototype.hasOwnProperty.call(HERO_VARIANT_ACTIONS, variant);
+
+    if (hasKnownVariant) {
+        const actions = HERO_VARIANT_ACTIONS[variant];
+        if (!Array.isArray(actions) || actions.length === 0) {
+            if (actionWrapper) {
+                actionWrapper.remove();
+                actionWrapper = null;
+            }
+        } else {
+            if (!actionWrapper) {
+                actionWrapper = document.createElement('div');
+                actionWrapper.className = 'hero-btn-wrapper';
+                heroContent.appendChild(actionWrapper);
+            }
+
+            actionWrapper.innerHTML = '';
+            actions.forEach(actionConfig => {
+                actionWrapper.appendChild(createHeroCtaButton(actionConfig));
+            });
+        }
+    }
+
+    const hasHeroActions = Boolean(heroContent.querySelector('.hero-btn-wrapper a, .hero-btn-wrapper button'));
+    heroContent.classList.toggle('hero-content--no-cta', !hasHeroActions);
+}
+
+function markHeroSlidesDecorative() {
+    const heroSlider = document.querySelector('.hero-slider');
+    if (!heroSlider) {
+        return;
+    }
+
+    heroSlider.setAttribute('aria-hidden', 'true');
+    heroSlider.querySelectorAll('.hero-slide').forEach(slide => {
+        slide.setAttribute('role', 'presentation');
+        slide.setAttribute('aria-hidden', 'true');
+    });
+}
+
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', async () => {
     initThemeToggle();
     syncUiOverlayState();
     initPhoneInputMasks();
 
-    await loadStoreCatalog();
-    initCatalogFilters();
-    renderProducts();
+    const hasCatalogGrid = Boolean(document.getElementById('products-grid'));
+    const hasCatalogFilters = document.querySelectorAll('.js-catalog-filter').length > 0;
+    const hasStaticCatalogCards = document.querySelectorAll('.js-static-add-to-cart').length > 0;
+    const shouldLoadCatalog = hasCatalogGrid || hasCatalogFilters || hasStaticCatalogCards;
+
+    if (shouldLoadCatalog) {
+        await loadStoreCatalog();
+    }
+
+    if (hasCatalogFilters) {
+        initCatalogFilters();
+    }
+
+    if (document.getElementById('catalog-search-input')) {
+        initCatalogSearch();
+    }
+
+    if (hasCatalogGrid) {
+        renderProducts();
+    }
+
     bindCommonUiActions();
     bindStaticAddToCartButtons();
     setupAccessibleTriggers();
-    ensureDeliveryCheckoutUi();
-    updateCart();
-    await loadDeliveryOptions();
-    updateDeliveryUi();
-    injectDeliveryPolicyPanel();
+    syncMenuExpandedState();
+    syncCartExpandedState();
+
+    if (cartSidebar) {
+        ensureDeliveryCheckoutUi();
+        updateCart();
+        await loadDeliveryOptions();
+        updateDeliveryUi();
+        injectDeliveryPolicyPanel();
+    }
+
+    applyHeroVariantLayout();
+    markHeroSlidesDecorative();
 
     // Contact Form Pre-fill Logic
     initContactFormSubmission();
@@ -2322,9 +2758,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setContactSubmitInfo('Responderemos a la brevedad posible.');
 
         if (product) {
-            const typeSelect = document.querySelector('select[name="type"]');
-            const messageTextarea = document.querySelector('textarea[name="message"]');
-            const productReferenceInput = document.querySelector('input[name="productReference"]');
+            const typeSelect = document.querySelector('select[name="tipoConsulta"]');
+            const messageTextarea = document.querySelector('textarea[name="mensaje"]');
+            const productReferenceInput = document.querySelector('input[name="referenciaProducto"]');
 
             if (productReferenceInput) {
                 productReferenceInput.value = product;
@@ -2387,6 +2823,12 @@ function initHeroSlideshow() {
         slide.classList.remove('active');
 
         if (!backgroundPath) {
+            const inlineBackground = String(slide.style.backgroundImage || '').trim();
+            if (inlineBackground && inlineBackground !== 'none') {
+                slide.hidden = false;
+                return true;
+            }
+
             slide.hidden = true;
             slide.style.backgroundImage = '';
             return false;
@@ -2488,3 +2930,4 @@ function openQuote(productName) {
     const safeProductName = String(productName || '').slice(0, 120);
     window.location.href = `/contacto?producto=${encodeURIComponent(safeProductName)}`;
 }
+

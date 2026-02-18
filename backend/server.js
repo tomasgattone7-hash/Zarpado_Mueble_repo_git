@@ -8,7 +8,8 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
-const { MercadoPagoConfig, Preference } = require('mercadopago');
+const mercadopago = require('mercadopago');
+const { MercadoPagoConfig, Preference } = mercadopago;
 const nodemailer = require('nodemailer');
 const { z } = require('zod');
 require('dotenv').config();
@@ -33,6 +34,7 @@ const DELIVERY_CONFIG_PATH = path.resolve(__dirname, 'config', 'delivery-config.
 const COMMERCE_CONFIG_PATH = path.resolve(__dirname, 'config', 'commerce-config.json');
 const ORDERS_DB_PATH = path.resolve(__dirname, 'data', 'orders.json');
 const QUOTES_DB_PATH = path.resolve(__dirname, 'data', 'quotes.json');
+const CONTACTS_DB_PATH = path.resolve(__dirname, 'data', 'contacts.json');
 const POSTAL_CODE_PATTERN = /^\d{4}$/;
 const ORDER_ID_PATTERN = /^ZM-\d{13}-[A-F0-9]{6}$/;
 const EXTERNAL_REFERENCE_PATTERN = /^ORDER_\d{13}_[A-Z0-9]{6}$/;
@@ -66,7 +68,7 @@ const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim();
 const FROM_EMAIL = String(process.env.FROM_EMAIL || '').trim();
 const csrfSessions = new Map();
-const CONTACT_TYPE_OPTIONS = ['Escritorio', 'Rack TV', 'Cocina', 'Placard', 'Otro', ''];
+const CONTACT_TYPE_OPTIONS = ['Escritorio', 'Rack TV', 'Cocina', 'Placard', 'Otro', 'compra', 'cotizacion', ''];
 const QUOTE_FURNITURE_TYPE_OPTIONS = [
     'Escritorio',
     'Rack TV',
@@ -85,6 +87,11 @@ const QUOTE_ALLOWED_FILE_MIME_TYPES = new Set([
     'image/webp',
     'application/pdf'
 ]);
+const QUOTE_UPLOAD_FIELD_NAMES = Object.freeze(['photos', 'adjuntos']);
+const QUOTE_UPLOAD_FIELDS = QUOTE_UPLOAD_FIELD_NAMES.map(name => ({
+    name,
+    maxCount: QUOTE_MAX_FILES
+}));
 
 const DEFAULT_ADMIN_PANEL_TOKEN = 'dev-admin-token';
 const ORDER_TYPE_STORE = 'tienda';
@@ -121,8 +128,8 @@ const QUOTE_STATUS_LABELS = Object.freeze({
     cancelled: 'Cancelado'
 });
 
-const FORMSPREE_CONTACT_ENDPOINT = 'https://formspree.io/f/xqedeven';
-const FORMSPREE_MEDIDA_ENDPOINT = 'https://formspree.io/f/maqdjjkq';
+const FORMSPREE_CONTACT_ENDPOINT = String(process.env.FORMSPREE_CONTACT_ENDPOINT || 'https://formspree.io/f/maqdjjkq').trim();
+const FORMSPREE_MEDIDA_ENDPOINT = String(process.env.FORMSPREE_MEDIDA_ENDPOINT || 'https://formspree.io/f/maqdjjkq').trim();
 const defaultAllowedOrigins = [
     NORMALIZED_FRONTEND_URL || 'https://zarpadomueble.com',
     'https://www.zarpadomueble.com',
@@ -285,6 +292,26 @@ const quoteUpload = multer({
         return callback(null, true);
     }
 });
+const contactUpload = multer({
+    limits: {
+        fields: 20
+    }
+});
+
+function extractUploadedQuoteFiles(request) {
+    const filesPayload = request?.files;
+    if (Array.isArray(filesPayload)) {
+        return filesPayload;
+    }
+
+    if (!filesPayload || typeof filesPayload !== 'object') {
+        return [];
+    }
+
+    return QUOTE_UPLOAD_FIELD_NAMES.flatMap(fieldName => (
+        Array.isArray(filesPayload[fieldName]) ? filesPayload[fieldName] : []
+    ));
+}
 
 function parsePayloadWithSchema(schema, payload, fallbackMessage = 'Datos inválidos') {
     const parsed = schema.safeParse(payload || {});
@@ -545,17 +572,17 @@ function normalizeContactFormPayload(payload = {}) {
         name: pickFirstFormValue(source, ['name', 'nombre']),
         email: pickFirstFormValue(source, ['email', 'correo', 'mail']),
         phone: pickFirstFormValue(source, ['phone', 'tel', 'telefono']),
-        type: pickFirstFormValue(source, ['type', 'tipo']),
+        type: pickFirstFormValue(source, ['type', 'tipo', 'tipoConsulta']),
         message: pickFirstFormValue(source, ['message', 'mensaje', 'descripcion']),
-        productReference: pickFirstFormValue(source, ['productReference', 'producto', 'referencia']),
-        company: pickFirstFormValue(source, ['company']),
+        productReference: pickFirstFormValue(source, ['productReference', 'producto', 'referencia', 'referenciaProducto']),
+        company: pickFirstFormValue(source, ['company', 'empresa']),
         website: pickFirstFormValue(source, ['website', 'web', 'sitio'])
     };
 }
 
 function normalizeQuoteFormPayload(payload = {}) {
     const source = payload && typeof payload === 'object' ? payload : {};
-    const privacyAccepted = source.privacyAccepted ?? source.privacidad ?? source.privacy ?? '';
+    const privacyAccepted = source.privacyAccepted ?? source.privacidad ?? source.privacy ?? source.aceptaPrivacidad ?? '';
 
     return {
         ...source,
@@ -570,13 +597,13 @@ function normalizeQuoteFormPayload(payload = {}) {
         targetDate: pickFirstFormValue(source, ['targetDate', 'fechaObjetivo']),
         additionalComments: pickFirstFormValue(source, ['additionalComments', 'comentariosAdicionales', 'comentarios']),
         privacyAccepted,
-        company: pickFirstFormValue(source, ['company']),
+        company: pickFirstFormValue(source, ['company', 'empresa']),
         website: pickFirstFormValue(source, ['website', 'web', 'sitio'])
     };
 }
 
 function getFormHoneypotValue(payload = {}) {
-    return pickFirstFormValue(payload, ['website', 'company', 'web', 'sitio']);
+    return pickFirstFormValue(payload, ['website', 'company', 'empresa', 'web', 'sitio']);
 }
 
 function parseFormPayload(schema, payload) {
@@ -627,6 +654,33 @@ async function submitFormspreeJson({ endpoint, payload }) {
     }
 
     return responsePayload;
+}
+
+function shouldUseInternalFormsFallback(error) {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    if (error.message === 'forms_provider_not_configured') {
+        return true;
+    }
+
+    if (error.message !== 'form_forward_failed') {
+        return false;
+    }
+
+    const providerStatus = Number.parseInt(error.providerStatus, 10);
+    if (Number.isInteger(providerStatus) && providerStatus >= 400 && providerStatus < 500) {
+        return true;
+    }
+
+    const providerError = String(error.providerError || '').toLowerCase();
+    return (
+        providerError.includes('ajax')
+        || providerError.includes('captcha')
+        || providerError.includes('recaptcha')
+        || providerError.includes('file upload')
+    );
 }
 
 function ensureJsonFile(filePath, defaultValue) {
@@ -958,6 +1012,27 @@ function readQuotesStore() {
 
 function writeQuotesStore(data) {
     writeJsonFile(QUOTES_DB_PATH, data);
+}
+
+function readContactsStore() {
+    const data = readJsonFile(CONTACTS_DB_PATH, { contacts: [] });
+    return Array.isArray(data.contacts) ? data : { contacts: [] };
+}
+
+function writeContactsStore(data) {
+    writeJsonFile(CONTACTS_DB_PATH, data);
+}
+
+function generateContactId() {
+    const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
+    return `CT-${Date.now()}-${randomPart}`;
+}
+
+function createContactLead(contactRecord) {
+    const store = readContactsStore();
+    store.contacts.push(contactRecord);
+    writeContactsStore(store);
+    return contactRecord;
 }
 
 function generateQuoteId() {
@@ -1984,6 +2059,7 @@ if (hasFrontendStaticBundle) {
             return res.status(404).end();
         }
 
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.sendFile(path.resolve(FRONTEND_PAGES_PATH, htmlFile));
     });
 
@@ -1994,6 +2070,7 @@ if (hasFrontendStaticBundle) {
         etag: true,
         setHeaders: (res, filePath) => {
             if (filePath.endsWith('.html')) {
+                res.setHeader('Content-Type', 'text/html; charset=utf-8');
                 res.setHeader('Cache-Control', 'no-store');
                 return;
             }
@@ -2013,6 +2090,12 @@ if (hasFrontendStaticBundle) {
 const hasMercadoPagoAccessToken = Boolean(normalizeText(process.env.MP_ACCESS_TOKEN, 600));
 if (!hasMercadoPagoAccessToken) {
     console.warn('⚠️ MP_ACCESS_TOKEN no está configurado. Mercado Pago quedará deshabilitado.');
+}
+
+if (hasMercadoPagoAccessToken && typeof mercadopago.configure === 'function') {
+    mercadopago.configure({
+        access_token: process.env.MP_ACCESS_TOKEN
+    });
 }
 
 try {
@@ -3621,58 +3704,22 @@ async function handleContactSubmission(req, res, next) {
         const contactPayload = parseFormPayload(contactPayloadSchema, normalizedPayload);
         const name = contactPayload.name;
         const email = contactPayload.email;
-        const phone = String(contactPayload.phone || '').trim();
-        const type = String(contactPayload.type || '').trim();
+        const phone = String(contactPayload.phone || "").trim();
+        const type = String(contactPayload.type || "").trim();
         const message = contactPayload.message;
-        const productReference = String(contactPayload.productReference || '').trim();
+        const productReference = String(contactPayload.productReference || "").trim();
         const honeypotValue = getFormHoneypotValue(normalizedPayload);
         const requestMetadata = buildFormRequestMetadata(req);
 
         // Honeypot: bots suelen completar campos invisibles. Respondemos OK sin procesar.
         if (honeypotValue) {
-            return res.status(200).json({ ok: true, code: 'spam_detected', requestId: req.requestId });
+            return res.status(200).json({ ok: true, code: "spam_detected", requestId: req.requestId });
         }
 
-        let provider = 'formspree';
-        if (emailTransporter && ADMIN_EMAIL && FROM_EMAIL) {
-            const subject = `Nuevo contacto web - ${type || 'Consulta general'}`;
-            const lines = [
-                `Nombre: ${name}`,
-                `Email: ${email}`,
-                `Teléfono: ${phone || 'No informado'}`,
-                `Tipo de mueble: ${type || 'No informado'}`,
-                `Referencia de producto: ${productReference || 'No informada'}`,
-                '',
-                'Mensaje:',
-                message,
-                '',
-                `IP: ${requestMetadata.ip || 'No disponible'}`,
-                `Origen: ${requestMetadata.origin || 'No disponible'}`,
-                `Request ID: ${requestMetadata.requestId || 'No disponible'}`
-            ];
+        let provider = "formspree";
+        let contactId = "";
 
-            try {
-                await emailTransporter.sendMail({
-                    from: FROM_EMAIL,
-                    to: ADMIN_EMAIL,
-                    replyTo: email,
-                    subject,
-                    text: lines.join('\n')
-                });
-                provider = 'smtp';
-            } catch (smtpError) {
-                console.error(`[${req.requestId}] ❌ Error SMTP contacto: ${smtpError.message}`);
-                provider = await submitContactViaFormspree({
-                    name,
-                    email,
-                    phone,
-                    type,
-                    message,
-                    productReference,
-                    metadata: requestMetadata
-                });
-            }
-        } else {
+        try {
             provider = await submitContactViaFormspree({
                 name,
                 email,
@@ -3682,13 +3729,74 @@ async function handleContactSubmission(req, res, next) {
                 productReference,
                 metadata: requestMetadata
             });
+        } catch (providerError) {
+            if (!shouldUseInternalFormsFallback(providerError)) {
+                throw providerError;
+            }
+
+            provider = "internal_store";
+            contactId = generateContactId();
+            createContactLead({
+                contactId,
+                createdAt: new Date().toISOString(),
+                source: "web",
+                provider,
+                customer: {
+                    name,
+                    email,
+                    phone,
+                    type,
+                    productReference
+                },
+                message,
+                metadata: requestMetadata
+            });
+
+            const providerErrorMessage = String(providerError.providerError || providerError.message || "unknown").trim();
+            console.warn(`[${req.requestId}] Contacto guardado en fallback interno (${providerErrorMessage})`);
         }
 
-        console.log(`[${req.requestId}] 📨 Contacto enviado (${provider}) desde ${email}`);
-        return res.json({ ok: true, provider, requestId: req.requestId });
+        // Si SMTP esta disponible, enviamos copia interna sin alterar provider principal.
+        if (provider === "formspree" && emailTransporter && ADMIN_EMAIL && FROM_EMAIL) {
+            const subject = `Nuevo contacto web - ${type || "Consulta general"}`;
+            const lines = [
+                `Nombre: ${name}`,
+                `Email: ${email}`,
+                `Telefono: ${phone || "No informado"}`,
+                `Tipo de mueble: ${type || "No informado"}`,
+                `Referencia de producto: ${productReference || "No informada"}`,
+                "",
+                "Mensaje:",
+                message,
+                "",
+                `IP: ${requestMetadata.ip || "No disponible"}`,
+                `Origen: ${requestMetadata.origin || "No disponible"}`,
+                `Request ID: ${requestMetadata.requestId || "No disponible"}`
+            ];
+
+            try {
+                await emailTransporter.sendMail({
+                    from: FROM_EMAIL,
+                    to: ADMIN_EMAIL,
+                    replyTo: email,
+                    subject,
+                    text: lines.join("\n")
+                });
+            } catch (smtpError) {
+                console.error(`[${req.requestId}] Error SMTP contacto (copia interna): ${smtpError.message}`);
+            }
+        }
+
+        console.log(`[${req.requestId}] Contacto enviado (${provider}) desde ${email}`);
+        return res.json({
+            ok: true,
+            provider,
+            contactId: contactId || undefined,
+            requestId: req.requestId
+        });
     } catch (error) {
         if (!error.status) {
-            console.error(`[${req.requestId}] ❌ Error al enviar contacto:`, error);
+            console.error(`[${req.requestId}] Error al enviar contacto:`, error);
         }
         return next(error);
     }
@@ -3717,9 +3825,7 @@ async function handleQuoteSubmission(req, res, next) {
         const additionalComments = sanitizeMultiLine(quotePayload.additionalComments, 2000);
         const requestMetadata = buildFormRequestMetadata(req);
 
-        const photoFiles = Array.isArray(req.files)
-            ? req.files
-            : [];
+        const photoFiles = extractUploadedQuoteFiles(req);
 
         const photoMetadata = photoFiles.map(file => ({
             originalName: sanitizeSingleLine(file.originalname, 120) || 'archivo',
@@ -3728,50 +3834,69 @@ async function handleQuoteSubmission(req, res, next) {
         }));
 
         let provider = 'formspree';
-        if (emailTransporter && ADMIN_EMAIL && FROM_EMAIL) {
-            const subject = `Nueva cotización A Medida - ${furnitureType}`;
-            const lines = [
-                `Nombre: ${fullName}`,
-                `Email: ${email}`,
-                `Teléfono: ${phone}`,
-                `Ciudad/Barrio: ${cityNeighborhood}`,
-                `Provincia: ${province}`,
-                `Tipo de mueble: ${furnitureType}`,
-                `Medidas aproximadas: ${approximateMeasures}`,
-                `Presupuesto estimado: ${estimatedBudget || 'No informado'}`,
-                `Fecha objetivo: ${targetDate || 'No informada'}`,
-                '',
-                'Comentarios adicionales:',
-                additionalComments || 'Sin comentarios',
-                '',
-                `Archivos adjuntos: ${photoMetadata.length}`,
-                `IP: ${requestMetadata.ip || 'No disponible'}`,
-                `Origen: ${requestMetadata.origin || 'No disponible'}`,
-                `Request ID: ${requestMetadata.requestId || 'No disponible'}`
-            ];
+        let providerFallbackNote = '';
+        try {
+            if (emailTransporter && ADMIN_EMAIL && FROM_EMAIL) {
+                const subject = `Nueva cotización A Medida - ${furnitureType}`;
+                const lines = [
+                    `Nombre: ${fullName}`,
+                    `Email: ${email}`,
+                    `Teléfono: ${phone}`,
+                    `Ciudad/Barrio: ${cityNeighborhood}`,
+                    `Provincia: ${province}`,
+                    `Tipo de mueble: ${furnitureType}`,
+                    `Medidas aproximadas: ${approximateMeasures}`,
+                    `Presupuesto estimado: ${estimatedBudget || 'No informado'}`,
+                    `Fecha objetivo: ${targetDate || 'No informada'}`,
+                    '',
+                    'Comentarios adicionales:',
+                    additionalComments || 'Sin comentarios',
+                    '',
+                    `Archivos adjuntos: ${photoMetadata.length}`,
+                    `IP: ${requestMetadata.ip || 'No disponible'}`,
+                    `Origen: ${requestMetadata.origin || 'No disponible'}`,
+                    `Request ID: ${requestMetadata.requestId || 'No disponible'}`
+                ];
 
-            if (photoMetadata.length > 0) {
-                lines.push(
-                    photoMetadata.map(file => `- ${file.originalName} (${file.mimeType}, ${file.sizeKb} KB)`).join('\n')
-                );
-            }
+                if (photoMetadata.length > 0) {
+                    lines.push(
+                        photoMetadata.map(file => `- ${file.originalName} (${file.mimeType}, ${file.sizeKb} KB)`).join('\n')
+                    );
+                }
 
-            try {
-                await emailTransporter.sendMail({
-                    from: FROM_EMAIL,
-                    to: ADMIN_EMAIL,
-                    replyTo: email,
-                    subject,
-                    text: lines.join('\n'),
-                    attachments: photoFiles.map(file => ({
-                        filename: sanitizeSingleLine(file.originalname, 120) || 'archivo',
-                        content: file.buffer,
-                        contentType: file.mimetype
-                    }))
-                });
-                provider = 'smtp';
-            } catch (smtpError) {
-                console.error(`[${req.requestId}] ❌ Error SMTP cotización: ${smtpError.message}`);
+                try {
+                    await emailTransporter.sendMail({
+                        from: FROM_EMAIL,
+                        to: ADMIN_EMAIL,
+                        replyTo: email,
+                        subject,
+                        text: lines.join('\n'),
+                        attachments: photoFiles.map(file => ({
+                            filename: sanitizeSingleLine(file.originalname, 120) || 'archivo',
+                            content: file.buffer,
+                            contentType: file.mimetype
+                        }))
+                    });
+                    provider = 'smtp';
+                } catch (smtpError) {
+                    console.error(`[${req.requestId}] ❌ Error SMTP cotización: ${smtpError.message}`);
+                    provider = await submitQuoteViaFormspree({
+                        fullName,
+                        email,
+                        phone,
+                        cityNeighborhood,
+                        province,
+                        furnitureType,
+                        approximateMeasures,
+                        estimatedBudget,
+                        targetDate,
+                        additionalComments,
+                        photoMetadata,
+                        photoFiles,
+                        metadata: requestMetadata
+                    });
+                }
+            } else {
                 provider = await submitQuoteViaFormspree({
                     fullName,
                     email,
@@ -3788,22 +3913,15 @@ async function handleQuoteSubmission(req, res, next) {
                     metadata: requestMetadata
                 });
             }
-        } else {
-            provider = await submitQuoteViaFormspree({
-                fullName,
-                email,
-                phone,
-                cityNeighborhood,
-                province,
-                furnitureType,
-                approximateMeasures,
-                estimatedBudget,
-                targetDate,
-                additionalComments,
-                photoMetadata,
-                photoFiles,
-                metadata: requestMetadata
-            });
+        } catch (providerError) {
+            if (!shouldUseInternalFormsFallback(providerError)) {
+                throw providerError;
+            }
+
+            provider = 'internal_store';
+            const providerErrorMessage = String(providerError.providerError || providerError.message || 'unknown').trim();
+            providerFallbackNote = `Envío externo no disponible (${providerErrorMessage}). Queda registrado para seguimiento interno.`;
+            console.warn(`[${req.requestId}] ⚠️ Cotización guardada en fallback interno (${providerErrorMessage})`);
         }
 
         const quoteId = generateQuoteId();
@@ -3834,7 +3952,7 @@ async function handleQuoteSubmission(req, res, next) {
             },
             attachments: photoMetadata,
             timeline: [
-                makeTimelineEntry('received', 'Solicitud enviada desde la web')
+                makeTimelineEntry('received', providerFallbackNote || 'Solicitud enviada desde la web')
             ]
         });
 
@@ -3855,11 +3973,11 @@ async function handleQuoteSubmission(req, res, next) {
     }
 }
 
-app.post('/api/contact', handleContactSubmission);
-app.post('/forms/contacto', handleContactSubmission);
-app.post('/api/quotes', quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
-app.post('/forms/medida', quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
-app.post('/forms/envios', quoteUpload.array('photos', QUOTE_MAX_FILES), handleQuoteSubmission);
+app.post('/api/contact', contactUpload.none(), handleContactSubmission);
+app.post('/forms/contacto', contactUpload.none(), handleContactSubmission);
+app.post('/api/quotes', quoteUpload.fields(QUOTE_UPLOAD_FIELDS), handleQuoteSubmission);
+app.post('/forms/medida', quoteUpload.fields(QUOTE_UPLOAD_FIELDS), handleQuoteSubmission);
+app.post('/forms/envios', quoteUpload.fields(QUOTE_UPLOAD_FIELDS), handleQuoteSubmission);
 
 app.post('/api/mp/webhook', async (req, res, next) => {
     const topic = extractWebhookTopic(req) || 'unknown';
@@ -4785,6 +4903,7 @@ app.use((req, res, next) => {
     }
 
     if (hasFrontendStaticBundle && fs.existsSync(FRONTEND_NOT_FOUND_PATH)) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.status(404).sendFile(FRONTEND_NOT_FOUND_PATH);
     }
 

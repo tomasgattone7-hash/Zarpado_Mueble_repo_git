@@ -23,7 +23,7 @@
     <header class="navbar">
         <div class="container navbar-container">
             <a href="index.html" class="logo"><img class="logo-dinamico" src="/assets/logo_blanco.svg" alt="Zarpado Mueble"></a>
-            <nav class="nav-menu">
+            <nav id="primary-navigation" class="nav-menu">
                 <ul>
                     <li><a href="index.html" class="nav-link">Inicio</a></li>
                     <li><a href="nosotros.html" class="nav-link">Nosotros</a></li>
@@ -33,13 +33,13 @@
                 </ul>
             </nav>
             <div class="nav-icons">
-                <div class="cart-icon js-toggle-cart">
+                <button class="cart-icon js-toggle-cart" type="button" aria-label="Abrir carrito" aria-expanded="false" aria-controls="cartSidebar">
                     <i class="fas fa-shopping-bag"></i>
                     <span class="cart-count">0</span>
-                </div>
-                <div class="hamburger">
+                </button>
+                <button class="hamburger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="primary-navigation">
                     <span class="bar"></span><span class="bar"></span><span class="bar"></span>
-                </div>
+                </button>
             </div>
         </div>
     </header>
@@ -69,10 +69,10 @@
                     El pago no pudo ser procesado. Esto puede deberse a varios motivos:
                 </p>
                 <ul style="text-align: left; max-width: 400px; margin: 0 auto 2rem; color: var(--color-text-muted);">
-                    <li style="margin-bottom: 8px;">• Fondos insuficientes</li>
-                    <li style="margin-bottom: 8px;">• Datos incorrectos de la tarjeta</li>
-                    <li style="margin-bottom: 8px;">• Tarjeta vencida o bloqueada</li>
-                    <li style="margin-bottom: 8px;">• Límite de compra excedido</li>
+                    <li style="margin-bottom: 8px;">⬢ Fondos insuficientes</li>
+                    <li style="margin-bottom: 8px;">⬢ Datos incorrectos de la tarjeta</li>
+                    <li style="margin-bottom: 8px;">⬢ Tarjeta vencida o bloqueada</li>
+                    <li style="margin-bottom: 8px;">⬢ Límite de compra excedido</li>
                 </ul>
                 <p style="font-size: 1rem; color: var(--color-text-muted); margin-bottom: 3rem;">
                     Tus productos siguen en el carrito. Podés intentar nuevamente con otro medio de pago.
@@ -111,8 +111,11 @@
     </footer>
 
     <script src="/js/site-shell.min.js"></script>
+    <script src="/js/runtime-config.js"></script>
     <script src="/js/script.min.js"></script>
     <script src="/js/logo-theme.min.js" defer></script>
 </body>
 
 </html>
+
+

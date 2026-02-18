@@ -36,7 +36,7 @@
 <body data-page="amedida">
     <header class="navbar"></header>
 
-    <section class="hero" style="height: 62vh; min-height: 420px;">
+    <section class="hero" data-hero-variant="amedida" style="height: 62vh; min-height: 420px;">
         <div class="hero-slider">
             <div class="hero-slide active" style="background-image: url('/assets/optimized/14-960.webp');"></div>
         </div>
@@ -48,7 +48,6 @@
             </p>
             <div class="hero-btn-wrapper">
                 <a href="#form-cotizacion" class="btn btn-primary">Solicitar cotización</a>
-                <a href="/tienda" class="btn btn-outline">Ver Tienda</a>
             </div>
         </div>
     </section>
@@ -127,10 +126,11 @@
             </div>
 
             <div class="contact-form reveal" style="max-width: 900px; margin: 0 auto;">
-                <form id="form-medida" novalidate enctype="multipart/form-data">
+                <form id="form-medida" action="/forms/medida" method="POST" novalidate enctype="multipart/form-data">
+                    <input type="hidden" name="_subject" value="Nueva solicitud A Medida">
                     <div style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
                         <label for="quote-company">Empresa</label>
-                        <input id="quote-company" type="text" name="company" tabindex="-1" autocomplete="off" data-lpignore="true">
+                        <input id="quote-company" type="text" name="empresa" tabindex="-1" autocomplete="off" data-lpignore="true">
                     </div>
 
                     <div class="shipping-data-grid">
@@ -138,13 +138,13 @@
                             <label for="quote-full-name">Nombre completo *</label>
                             <input
                                 id="quote-full-name"
-                                name="fullName"
+                                name="nombre"
                                 class="form-input"
                                 required
                                 autocomplete="name"
                                 inputmode="text"
                                 maxlength="120"
-                                placeholder="Ej: Juan Pérez"
+                                placeholder="Ej: Juan Perez"
                             >
                         </div>
                         <div class="form-group">
@@ -165,7 +165,7 @@
                             <label for="quote-phone">Teléfono *</label>
                             <input
                                 id="quote-phone"
-                                name="phone"
+                                name="telefono"
                                 class="form-input"
                                 required
                                 autocomplete="tel"
@@ -179,7 +179,7 @@
                             <label for="quote-city-neighborhood">Ciudad / Barrio *</label>
                             <input
                                 id="quote-city-neighborhood"
-                                name="cityNeighborhood"
+                                name="ciudad"
                                 class="form-input"
                                 required
                                 autocomplete="address-level2"
@@ -192,7 +192,7 @@
                             <label for="quote-province">Provincia *</label>
                             <input
                                 id="quote-province"
-                                name="province"
+                                name="provincia"
                                 class="form-input"
                                 required
                                 autocomplete="address-level1"
@@ -203,7 +203,7 @@
                         </div>
                         <div class="form-group">
                             <label for="quote-furniture-type">Tipo de mueble *</label>
-                            <select id="quote-furniture-type" name="furnitureType" class="form-input" required>
+                            <select id="quote-furniture-type" name="tipoMueble" class="form-input" required>
                                 <option value="" selected disabled>Seleccioná una opción</option>
                                 <option value="Escritorio">Escritorio</option>
                                 <option value="Rack TV">Rack TV</option>
@@ -218,7 +218,7 @@
                             <label for="quote-approximate-measures">Medidas aproximadas *</label>
                             <textarea
                                 id="quote-approximate-measures"
-                                name="approximateMeasures"
+                                name="medidas"
                                 class="form-textarea"
                                 rows="4"
                                 required
@@ -233,7 +233,7 @@
                             <label for="quote-estimated-budget">Presupuesto estimado (opcional)</label>
                             <input
                                 id="quote-estimated-budget"
-                                name="estimatedBudget"
+                                name="presupuesto"
                                 class="form-input"
                                 autocomplete="off"
                                 inputmode="numeric"
@@ -245,7 +245,7 @@
                             <label for="quote-target-date">Fecha objetivo (opcional)</label>
                             <input
                                 id="quote-target-date"
-                                name="targetDate"
+                                name="fechaObjetivo"
                                 class="form-input"
                                 type="date"
                                 autocomplete="off"
@@ -266,7 +266,7 @@
                                 <button id="quote-files-trigger" type="button" class="btn btn-outline">Elegir archivos</button>
                                 <input
                                     id="quote-photos"
-                                    name="photos"
+                                    name="adjuntos"
                                     class="quote-file-input"
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -280,7 +280,7 @@
                             <label for="quote-additional-comments">Comentarios adicionales (opcional)</label>
                             <textarea
                                 id="quote-additional-comments"
-                                name="additionalComments"
+                                name="comentarios"
                                 class="form-textarea"
                                 rows="4"
                                 maxlength="2000"
@@ -291,7 +291,7 @@
 
                     <div class="form-group">
                         <label class="delivery-option" for="quote-privacy-accepted" style="align-items: center;">
-                            <input id="quote-privacy-accepted" name="privacyAccepted" type="checkbox" value="true" required>
+                            <input id="quote-privacy-accepted" name="aceptaPrivacidad" type="checkbox" value="true" required>
                             <span>
                                 Acepto la
                                 <a href="/privacidad" target="_blank" rel="noopener noreferrer">Política de Privacidad</a>
@@ -300,8 +300,9 @@
                         </label>
                     </div>
 
-                    <button id="quote-submit-btn" type="submit" class="btn btn-primary" style="width: 100%;">Enviar cotización</button>
-                    <p id="quote-submit-info" class="contact-submit-info" aria-live="polite">Completá los campos obligatorios para recibir tu propuesta.</p>
+                    <p class="required-fields-note">Los campos marcados con * son obligatorios.</p>
+                    <button id="quote-submit-btn" type="submit" class="btn btn-primary" style="width: 100%;">Enviar cotizacion</button>
+                    <p id="quote-submit-info" class="contact-submit-info" aria-live="assertive" aria-atomic="true">Completa los campos obligatorios para recibir tu propuesta.</p>
                 </form>
             </div>
         </div>
@@ -311,8 +312,14 @@
     <footer class="footer"></footer>
 
     <script src="/js/site-shell.min.js"></script>
+    <script src="/js/runtime-config.js"></script>
     <script src="/js/script.min.js"></script>
     <script src="/js/logo-theme.min.js" defer></script>
 </body>
 
 </html>
+
+
+
+
+

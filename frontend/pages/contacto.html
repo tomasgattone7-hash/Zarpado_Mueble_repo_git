@@ -62,54 +62,53 @@
             </div>
 
             <div class="contact-form reveal" style="transition-delay: 0.2s;">
-                <form id="form-contacto" action="#" method="POST" novalidate>
-                    <input type="hidden" name="productReference" value="">
+                <form id="form-contacto" action="/forms/contacto" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="referenciaProducto" value="">
+                    <input type="hidden" name="_subject" value="Consulta desde formulario de contacto">
                     <div style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
-                        <label for="contact-company">Empresa</label>
-                        <input id="contact-company" type="text" name="company" tabindex="-1" autocomplete="off" data-lpignore="true">
+                        <label for="empresa">Empresa</label>
+                        <input id="empresa" type="text" name="empresa" tabindex="-1" autocomplete="off" data-lpignore="true">
                     </div>
 
                     <div class="form-group">
-                        <label for="contact-name"
-                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Nombre y apellido</label>
-                        <input id="contact-name" type="text" name="name" class="form-input" required placeholder="Ej: Juan Pérez" autocomplete="name">
+                        <label for="nombre"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Nombre y apellido <span class="required-indicator" aria-hidden="true">*</span></label>
+                        <input id="nombre" type="text" name="nombre" class="form-input" required placeholder="Ej: Juan Perez" autocomplete="name">
                     </div>
 
                     <div class="form-group">
-                        <label for="contact-email"
-                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Correo electrónico</label>
-                        <input id="contact-email" type="email" name="email" class="form-input" required placeholder="Ej: juan@email.com"
+                        <label for="email"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Correo electronico <span class="required-indicator" aria-hidden="true">*</span></label>
+                        <input id="email" type="email" name="email" class="form-input" required placeholder="Ej: juan@email.com"
                             autocomplete="email">
                     </div>
 
                     <div class="form-group">
-                        <label for="contact-phone"
-                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Teléfono</label>
-                        <input id="contact-phone" type="tel" name="phone" class="form-input" placeholder="Ej: 11 1234 5678" autocomplete="tel">
+                        <label for="telefono"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Telefono</label>
+                        <input id="telefono" type="tel" name="telefono" class="form-input" placeholder="Ej: 11 1234 5678" autocomplete="tel">
                     </div>
 
                     <div class="form-group">
-                        <label for="contact-type"
-                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Tipo de consulta</label>
-                        <select id="contact-type" name="type" class="form-input" style="appearance: none; -webkit-appearance: none;">
-                            <option value="" selected>Seleccioná una opción</option>
-                            <option value="Escritorio">Escritorio / Oficina</option>
-                            <option value="Rack TV">Rack TV / Living</option>
-                            <option value="Cocina">Cocina</option>
-                            <option value="Placard">Placard / Vestidor</option>
-                            <option value="Otro">Proyecto a medida / Otro</option>
+                        <label for="tipoConsulta"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Tipo de consulta <span class="required-indicator" aria-hidden="true">*</span></label>
+                        <select id="tipoConsulta" name="tipoConsulta" class="form-input" required style="appearance: none; -webkit-appearance: none;">
+                            <option value="" disabled selected>Selecciona una opcion</option>
+                            <option value="compra">Compra</option>
+                            <option value="cotizacion">Cotizacion a medida</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="contact-message"
-                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Mensaje</label>
-                        <textarea id="contact-message" name="message" class="form-textarea" rows="5" required minlength="10"
-                            placeholder="Contanos medidas aproximadas, estilo que buscás y para cuándo lo necesitás."></textarea>
+                        <label for="mensaje"
+                            style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--color-text-muted);">Mensaje <span class="required-indicator" aria-hidden="true">*</span></label>
+                        <textarea id="mensaje" name="mensaje" class="form-textarea" rows="5" required minlength="10"
+                            placeholder="Contanos medidas aproximadas, estilo que buscas y para cuando lo necesitas."></textarea>
                     </div>
 
+                    <p class="required-fields-note">Los campos marcados con <span aria-hidden="true">*</span> son obligatorios.</p>
                     <button id="contact-submit-btn" type="submit" class="btn btn-primary" style="width: 100%;">Solicitar presupuesto</button>
-                    <p id="contact-submit-info" class="contact-submit-info" aria-live="polite">Responderemos a la brevedad.</p>
+                    <p id="contact-submit-info" class="contact-submit-info" aria-live="assertive" aria-atomic="true">Responderemos a la brevedad.</p>
                 </form>
             </div>
         </div>
@@ -119,8 +118,13 @@
     <footer class="footer"></footer>
 
     <script src="/js/site-shell.min.js"></script>
+    <script src="/js/runtime-config.js"></script>
     <script src="/js/script.min.js"></script>
     <script src="/js/logo-theme.min.js" defer></script>
 </body>
 
 </html>
+
+
+
+

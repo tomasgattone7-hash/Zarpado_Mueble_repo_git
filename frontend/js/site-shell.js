@@ -57,18 +57,18 @@
                         >
                     </a>
 
-                    <nav class="nav-menu" aria-label="Menú principal">
+                    <nav id="primary-navigation" class="nav-menu" aria-label="Menú principal">
                         <ul>
                             ${linksMarkup}
                         </ul>
                     </nav>
 
                     <div class="nav-icons">
-                        <div class="cart-icon js-toggle-cart" aria-label="Abrir carrito">
+                        <button class="cart-icon js-toggle-cart" type="button" aria-label="Abrir carrito" aria-expanded="false" aria-controls="cartSidebar">
                             <i class="fas fa-shopping-bag" aria-hidden="true"></i>
                             <span class="cart-count">0</span>
-                        </div>
-                        <button class="hamburger" type="button" aria-label="Abrir menú">
+                        </button>
+                        <button class="hamburger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="primary-navigation">
                             <span class="bar"></span>
                             <span class="bar"></span>
                             <span class="bar"></span>
@@ -209,7 +209,7 @@
         if (!navIcons?.querySelector('.cart-icon')) {
             navIcons?.insertAdjacentHTML(
                 'afterbegin',
-                '<div class="cart-icon js-toggle-cart" aria-label="Abrir carrito"><i class="fas fa-shopping-bag" aria-hidden="true"></i><span class="cart-count">0</span></div>'
+                '<button class="cart-icon js-toggle-cart" type="button" aria-label="Abrir carrito" aria-expanded="false" aria-controls="cartSidebar"><i class="fas fa-shopping-bag" aria-hidden="true"></i><span class="cart-count">0</span></button>'
             );
         }
 
@@ -256,3 +256,4 @@
 
     init();
 })();
+

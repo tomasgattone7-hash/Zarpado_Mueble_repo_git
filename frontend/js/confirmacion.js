@@ -3,7 +3,7 @@ const CART_STORAGE_KEY = 'zarpadoCart';
 const PHONE_PATTERN = /^[0-9+()\-\s]{6,40}$/;
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const POSTAL_CODE_PATTERN = /^\d{4}$/;
-const PROD_API_BASE_URL = '';
+const PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FETCH_TIMEOUT_MS = 12000;
 
@@ -84,7 +84,10 @@ const confirmState = {
     cart: [],
     shippingData: null,
     shippingQuote: null,
-    processing: false
+    processing: false,
+    subtotal: 0,
+    shippingCost: 0,
+    total: 0
 };
 
 function escapeHtml(value) {
@@ -135,6 +138,38 @@ function parseCartInteger(value) {
     return Number.isInteger(parsed) ? parsed : null;
 }
 
+function parseCartMoney(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        const rounded = Math.round(value);
+        return Number.isInteger(rounded) ? rounded : null;
+    }
+
+    const raw = String(value || '').trim();
+    if (!raw) {
+        return null;
+    }
+
+    const normalized = raw
+        .replace(/\s+/g, '')
+        .replace(/ars/ig, '')
+        .replace(/\$(?=\d|[.,]\d)/g, '')
+        .replace(/\.(?=\d{3}(\D|$))/g, '')
+        .replace(/,(?=\d{3}(\D|$))/g, '')
+        .replace(',', '.')
+        .replace(/[^0-9.-]/g, '');
+
+    if (!normalized || normalized === '-' || normalized === '.' || normalized === '-.') {
+        return null;
+    }
+
+    const parsed = Number.parseFloat(normalized);
+    if (!Number.isFinite(parsed)) {
+        return null;
+    }
+
+    return Math.round(parsed);
+}
+
 function sanitizeCart(items) {
     if (!Array.isArray(items)) {
         return [];
@@ -144,7 +179,7 @@ function sanitizeCart(items) {
         .map(item => ({
             id: parseCartInteger(item?.id ?? item?.productId ?? item?.itemId),
             name: String(item?.name || item?.title || item?.productName || '').trim(),
-            price: parseCartInteger(item?.price ?? item?.unit_price ?? item?.unitPrice),
+            price: parseCartMoney(item?.price ?? item?.unit_price ?? item?.unitPrice),
             quantity: parseCartInteger(item?.quantity ?? item?.qty ?? item?.cantidad),
             image: String(item?.image || '').trim()
         }))
@@ -240,12 +275,15 @@ function renderCartItems(items) {
     if (!list) return;
 
     list.innerHTML = items.map(item => {
-        const lineTotal = item.price * item.quantity;
+        const unitPrice = Number.isInteger(item.price) && item.price >= 0 ? item.price : 0;
+        const quantity = Number.isInteger(item.quantity) ? item.quantity : 0;
+        const lineTotal = unitPrice * quantity;
         return `
             <article class="checkout-cart-item">
                 <div>
                     <h3>${escapeHtml(item.name)}</h3>
-                    <p>Cantidad: ${item.quantity}</p>
+                    <p>Cantidad: ${quantity}</p>
+                    <p>Precio unitario: ${formatArs(unitPrice)}</p>
                 </div>
                 <strong>${formatArs(lineTotal)}</strong>
             </article>
@@ -276,28 +314,48 @@ function renderShippingData(data) {
 }
 
 function getSubtotal(items) {
-    return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    return items.reduce((acc, item) => {
+        const unitPrice = Number.isInteger(item.price) && item.price >= 0 ? item.price : 0;
+        const quantity = Number.isInteger(item.quantity) ? item.quantity : 0;
+        return acc + (unitPrice * quantity);
+    }, 0);
 }
 
 function renderTotals(subtotal, shippingCost) {
     const subtotalNode = document.getElementById('confirm-subtotal');
     const shippingNode = document.getElementById('confirm-shipping-cost');
     const totalNode = document.getElementById('confirm-total');
+    const normalizedSubtotal = Math.max(0, Math.round(Number(subtotal) || 0));
+    const normalizedShipping = Number.isInteger(shippingCost) && shippingCost >= 0
+        ? shippingCost
+        : 0;
+    const normalizedTotal = normalizedSubtotal + normalizedShipping;
+
+    confirmState.subtotal = normalizedSubtotal;
+    confirmState.shippingCost = normalizedShipping;
+    confirmState.total = normalizedTotal;
 
     if (subtotalNode) {
-        subtotalNode.textContent = formatArs(subtotal);
+        subtotalNode.textContent = formatArs(normalizedSubtotal);
     }
 
     if (shippingNode) {
-        shippingNode.textContent = Number.isInteger(shippingCost)
-            ? formatArs(shippingCost)
-            : 'A cotizar';
+        shippingNode.textContent = formatArs(normalizedShipping);
     }
 
     if (totalNode) {
-        const total = subtotal + (Number.isInteger(shippingCost) ? shippingCost : 0);
-        totalNode.textContent = formatArs(total);
+        totalNode.textContent = formatArs(normalizedTotal);
     }
+}
+
+function syncPayButtonState(forceDisable = false) {
+    const shouldEnable = (
+        !forceDisable
+        && !confirmState.processing
+        && Number.isInteger(confirmState.total)
+        && confirmState.total > 0
+    );
+    disablePayButton(!shouldEnable, 'Confirmar y pagar');
 }
 
 function renderShippingLabel(labelText) {
@@ -406,7 +464,7 @@ async function requestShippingQuote(postalCode, items) {
             items: items.map(item => ({
                 id: item.id,
                 quantity: item.quantity,
-                unit_price: item.price
+                unit_price: Number.isInteger(item.price) && item.price >= 0 ? item.price : 0
             }))
         })
     }, 12000);
@@ -455,7 +513,7 @@ function buildCheckoutPayload() {
         items: confirmState.cart.map(item => ({
             id: item.id,
             quantity: item.quantity,
-            unit_price: item.price
+            unit_price: Number.isInteger(item.price) && item.price >= 0 ? item.price : 0
         })),
         paymentMethod: 'mercadopago',
         buyerEmail: shipping.email,
@@ -546,8 +604,8 @@ async function handleConfirmAndPay() {
             ? fallbackMessage
             : (error?.message || fallbackMessage);
         setConfirmFeedback(message, 'error');
-        disablePayButton(false, 'Confirmar y pagar');
         confirmState.processing = false;
+        syncPayButtonState(false);
     }
 }
 
@@ -583,7 +641,8 @@ async function initConfirmationStep() {
 
     const subtotal = getSubtotal(confirmState.cart);
     renderTotals(subtotal, 0);
-    renderShippingLabel('Calculando costo de envío...');
+    syncPayButtonState(true);
+    renderShippingLabel('Cotizando costo de envío...');
     setConfirmFeedback('Validando costo de envío por código postal...', 'loading');
 
     requestShippingQuote(confirmState.shippingData.postalCode, confirmState.cart)
@@ -592,11 +651,15 @@ async function initConfirmationStep() {
             renderTotals(subtotal, quote.shippingCost);
             renderShippingLabel(`${quote.shippingLabel}. Plazos: 48/72 hs (stock) o 10-20 días hábiles (bajo pedido).`);
             setConfirmFeedback('Todo listo. Podés confirmar y pagar.', 'success');
-            disablePayButton(false, 'Confirmar y pagar');
+            syncPayButtonState(false);
         })
         .catch(error => {
-            renderTotals(subtotal, null);
-            renderShippingLabel('No pudimos calcular el envío automáticamente para este CP.');
+            confirmState.shippingQuote = {
+                shippingCost: 0,
+                shippingLabel: 'Envio a cotizar'
+            };
+            renderTotals(subtotal, 0);
+            renderShippingLabel('No pudimos calcular el envío automáticamente para este CP. Podés continuar y lo confirmamos al procesar el pedido.');
             const fallbackMessage = error?.name === 'AbortError'
                 ? 'La cotización tardó demasiado. Verificá tu conexión y reintentá.'
                 : 'No pudimos calcular el envío.';
@@ -604,12 +667,12 @@ async function initConfirmationStep() {
                 ? fallbackMessage
                 : (error?.message || fallbackMessage);
             setConfirmFeedback(message, 'error');
-            disablePayButton(true, 'Confirmar y pagar');
+            syncPayButtonState(false);
         });
 
     const payButton = document.getElementById('confirm-and-pay-btn');
     if (payButton) {
-        payButton.disabled = true;
+        syncPayButtonState(true);
         payButton.addEventListener('click', () => {
             handleConfirmAndPay();
         });
