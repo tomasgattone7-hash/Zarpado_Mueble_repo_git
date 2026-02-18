@@ -1,4 +1,6 @@
+(() => {
 const CHECKOUT_SHIPPING_STORAGE_KEY = 'checkoutShippingData';
+const CHECKOUT_STATE_STORAGE_KEY = 'checkoutState';
 const CART_STORAGE_KEY = 'zarpadoCart';
 const PHONE_PATTERN = /^[0-9+()\-\s]{6,40}$/;
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -84,9 +86,12 @@ const confirmState = {
     cart: [],
     shippingData: null,
     shippingQuote: null,
+    draftOrderId: null,
+    draftOrderRef: '',
     processing: false,
     subtotal: 0,
     shippingCost: 0,
+    installationCost: 0,
     total: 0
 };
 
@@ -131,6 +136,27 @@ function getStoredCart() {
     }
 
     return parsed;
+}
+
+function getStoredCheckoutState() {
+    try {
+        const raw = sessionStorage.getItem(CHECKOUT_STATE_STORAGE_KEY)
+            || localStorage.getItem(CHECKOUT_STATE_STORAGE_KEY);
+        const parsed = JSON.parse(raw || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveCheckoutState(state) {
+    const payload = state && typeof state === 'object' ? state : {};
+    try {
+        sessionStorage.setItem(CHECKOUT_STATE_STORAGE_KEY, JSON.stringify(payload));
+        localStorage.setItem(CHECKOUT_STATE_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+        // Ignore blocked storage scenarios.
+    }
 }
 
 function parseCartInteger(value) {
@@ -190,6 +216,22 @@ function sanitizeCart(items) {
             && item.quantity > 0
             && item.quantity <= 10
         ));
+}
+
+function getStoredCheckoutItems(checkoutState) {
+    return sanitizeCart(checkoutState?.items);
+}
+
+function getStoredCheckoutTotals(checkoutState) {
+    const subtotal = parseCartMoney(checkoutState?.totals?.subtotal);
+    const shippingCost = parseCartMoney(checkoutState?.totals?.envio);
+    const total = parseCartMoney(checkoutState?.totals?.total);
+
+    return {
+        subtotal: Number.isInteger(subtotal) && subtotal >= 0 ? subtotal : null,
+        shippingCost: Number.isInteger(shippingCost) && shippingCost >= 0 ? shippingCost : null,
+        total: Number.isInteger(total) && total >= 0 ? total : null
+    };
 }
 
 function getStoredShippingData() {
@@ -321,18 +363,24 @@ function getSubtotal(items) {
     }, 0);
 }
 
-function renderTotals(subtotal, shippingCost) {
+function renderTotals(subtotal, shippingCost, installationCost = 0) {
     const subtotalNode = document.getElementById('confirm-subtotal');
     const shippingNode = document.getElementById('confirm-shipping-cost');
+    const installationNode = document.getElementById('confirm-installation-cost');
+    const installationRow = document.getElementById('confirm-installation-row');
     const totalNode = document.getElementById('confirm-total');
     const normalizedSubtotal = Math.max(0, Math.round(Number(subtotal) || 0));
     const normalizedShipping = Number.isInteger(shippingCost) && shippingCost >= 0
         ? shippingCost
         : 0;
-    const normalizedTotal = normalizedSubtotal + normalizedShipping;
+    const normalizedInstallation = Number.isInteger(installationCost) && installationCost >= 0
+        ? installationCost
+        : 0;
+    const normalizedTotal = normalizedSubtotal + normalizedShipping + normalizedInstallation;
 
     confirmState.subtotal = normalizedSubtotal;
     confirmState.shippingCost = normalizedShipping;
+    confirmState.installationCost = normalizedInstallation;
     confirmState.total = normalizedTotal;
 
     if (subtotalNode) {
@@ -341,6 +389,14 @@ function renderTotals(subtotal, shippingCost) {
 
     if (shippingNode) {
         shippingNode.textContent = formatArs(normalizedShipping);
+    }
+
+    if (installationRow) {
+        installationRow.hidden = normalizedInstallation <= 0;
+    }
+
+    if (installationNode) {
+        installationNode.textContent = formatArs(normalizedInstallation);
     }
 
     if (totalNode) {
@@ -508,6 +564,15 @@ function markStepThreeActive() {
 function buildCheckoutPayload() {
     const shipping = confirmState.shippingData;
     const address = splitAddressLine(shipping.addressLine);
+    const checkoutState = getStoredCheckoutState();
+    const paymentMethod = String(checkoutState?.paymentMethod || 'mercadopago').trim() || 'mercadopago';
+    const draftOrderId = Number.parseInt(confirmState.draftOrderId, 10);
+    const draftOrderRef = String(
+        confirmState.draftOrderRef
+        || checkoutState?.draftOrderRef
+        || checkoutState?.orderId
+        || ''
+    ).trim();
 
     return {
         items: confirmState.cart.map(item => ({
@@ -515,7 +580,9 @@ function buildCheckoutPayload() {
             quantity: item.quantity,
             unit_price: Number.isInteger(item.price) && item.price >= 0 ? item.price : 0
         })),
-        paymentMethod: 'mercadopago',
+        draftOrderId: Number.isInteger(draftOrderId) && draftOrderId > 0 ? draftOrderId : undefined,
+        orderId: draftOrderRef || undefined,
+        paymentMethod,
         buyerEmail: shipping.email,
         email: shipping.email,
         payer: {
@@ -555,6 +622,11 @@ async function handleConfirmAndPay() {
         return;
     }
 
+    if (!String(confirmState.draftOrderRef || '').trim()) {
+        setConfirmFeedback('No encontramos un pedido draft válido. Volvé al paso 1 e intentá nuevamente.', 'error');
+        return;
+    }
+
     if (!confirmState.shippingQuote || !Number.isInteger(confirmState.shippingQuote.shippingCost)) {
         setConfirmFeedback('No pudimos validar el envío. Revisá tus datos y reintentá.', 'error');
         return;
@@ -571,6 +643,7 @@ async function handleConfirmAndPay() {
                 'Content-Type': 'application/json',
                 Accept: 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify(buildCheckoutPayload())
         }, 15000);
 
@@ -616,63 +689,176 @@ function redirectWithDelay(url, message) {
     }, 1200);
 }
 
+function getOrderIdFromLocation() {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        return String(params.get('orderId') || params.get('order_id') || '').trim();
+    } catch {
+        return '';
+    }
+}
+
+async function fetchDraftSummary(orderId) {
+    const query = orderId
+        ? `?orderId=${encodeURIComponent(orderId)}`
+        : '';
+    const candidateEndpoints = [
+        `/api/checkout/summary${query}`,
+        `/api/checkout/confirmacion${query}`
+    ];
+
+    for (const endpoint of candidateEndpoints) {
+        const response = await fetchWithTimeout(
+            buildApiUrl(endpoint),
+            {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json'
+                },
+                credentials: 'include'
+            },
+            12000
+        );
+
+        let payload = {};
+        try {
+            payload = await response.json();
+        } catch {
+            payload = {};
+        }
+
+        if (!response.ok || payload?.ok === false) {
+            const error = new Error(String(payload?.error || 'No pudimos recuperar el pedido en curso.'));
+            error.redirectTo = String(payload?.redirectTo || '').trim();
+            if (response.status === 404 && endpoint.includes('/api/checkout/summary')) {
+                continue;
+            }
+            throw error;
+        }
+
+        const pedido = payload?.pedido && typeof payload.pedido === 'object'
+            ? payload.pedido
+            : null;
+        if (pedido) {
+            return pedido;
+        }
+    }
+
+    throw new Error('No recibimos los datos del pedido para confirmar.');
+}
+
 async function initConfirmationStep() {
     const path = String(window.location.pathname || '').toLowerCase();
     if (!path.includes('confirmacion')) {
         return;
     }
 
-    confirmState.cart = await hydrateCartItems(sanitizeCart(getStoredCart()));
+    const checkoutState = getStoredCheckoutState();
+    const checkoutItems = getStoredCheckoutItems(checkoutState);
+    const localCartItems = sanitizeCart(getStoredCart());
+    confirmState.cart = await hydrateCartItems(checkoutItems.length > 0 ? checkoutItems : localCartItems);
+
     if (confirmState.cart.length === 0) {
         redirectWithDelay('/tienda', 'Tu carrito está vacío. Te llevamos a la tienda.');
         return;
     }
 
-    const { normalized, missing } = getMissingShippingFields(getStoredShippingData());
-    if (missing.length > 0) {
-        redirectWithDelay('/datos-envio', 'Faltan datos de envío para continuar. Completá el paso 1.');
+    const queryOrderId = getOrderIdFromLocation();
+    const storedOrderId = String(checkoutState?.draftOrderRef || checkoutState?.orderId || '').trim();
+    const requestedOrderId = queryOrderId || storedOrderId;
+    let draftSummary = null;
+
+    try {
+        draftSummary = await fetchDraftSummary(requestedOrderId);
+    } catch (error) {
+        const redirectTo = String(error?.redirectTo || '').trim() || '/datos-envio';
+        redirectWithDelay(redirectTo, error?.message || 'No encontramos un pedido en curso. Completá primero el paso 1.');
         return;
     }
 
+    const draftOrderId = Number.parseInt(draftSummary?.id, 10);
+    confirmState.draftOrderId = Number.isInteger(draftOrderId) && draftOrderId > 0 ? draftOrderId : null;
+    confirmState.draftOrderRef = String(draftSummary?.orderId || requestedOrderId || '').trim();
+    if (!queryOrderId && confirmState.draftOrderRef && window.history?.replaceState) {
+        const target = `/confirmacion?orderId=${encodeURIComponent(confirmState.draftOrderRef)}`;
+        window.history.replaceState({}, '', target);
+    }
+
+    const serverShipping = draftSummary?.shipping && typeof draftSummary.shipping === 'object'
+        ? draftSummary.shipping
+        : {};
+    const { normalized, missing } = getMissingShippingFields(serverShipping);
+    if (missing.length > 0) {
+        redirectWithDelay('/datos-envio', 'El pedido guardado no tiene datos de envío completos. Completá nuevamente el paso 1.');
+        return;
+    }
     confirmState.shippingData = normalized;
+
+    const subtotal = parseCartMoney(draftSummary?.totals?.subtotal);
+    const shippingCost = parseCartMoney(draftSummary?.totals?.envio);
+    const totalFromSummary = parseCartMoney(draftSummary?.totals?.total);
+    const installationFromSummary = parseCartMoney(draftSummary?.totals?.installation);
+    if (!Number.isInteger(subtotal) || subtotal < 0 || !Number.isInteger(shippingCost) || shippingCost < 0) {
+        redirectWithDelay('/datos-envio', 'Los totales del pedido son inválidos. Reintentá el paso 1.');
+        return;
+    }
+    const installationCost = Number.isInteger(installationFromSummary) && installationFromSummary >= 0
+        ? installationFromSummary
+        : Math.max(
+            0,
+            (Number.isInteger(totalFromSummary) && totalFromSummary >= 0
+                ? totalFromSummary
+                : (subtotal + shippingCost)) - subtotal - shippingCost
+        );
+
+    const shippingLabel = String(draftSummary?.shippingLabel || 'Envío a domicilio').trim() || 'Envío a domicilio';
+    confirmState.shippingQuote = {
+        shippingCost,
+        installationCost,
+        shippingLabel
+    };
 
     renderCartItems(confirmState.cart);
     renderShippingData(confirmState.shippingData);
+    renderTotals(subtotal, shippingCost, installationCost);
+    renderShippingLabel(`${shippingLabel}. Plazos: 48/72 hs (stock) o 10-20 días hábiles (bajo pedido).`);
+    setConfirmFeedback('Pedido cargado desde base de datos. Podés confirmar y pagar.', 'success');
+    syncPayButtonState(false);
 
-    const subtotal = getSubtotal(confirmState.cart);
-    renderTotals(subtotal, 0);
-    syncPayButtonState(true);
-    renderShippingLabel('Cotizando costo de envío...');
-    setConfirmFeedback('Validando costo de envío por código postal...', 'loading');
+    const shippingSnapshot = {
+        ...confirmState.shippingData,
+        savedAt: new Date().toISOString()
+    };
+    try {
+        sessionStorage.setItem(CHECKOUT_SHIPPING_STORAGE_KEY, JSON.stringify(shippingSnapshot));
+        localStorage.setItem(CHECKOUT_SHIPPING_STORAGE_KEY, JSON.stringify(shippingSnapshot));
+    } catch {
+        // Ignore blocked storage.
+    }
 
-    requestShippingQuote(confirmState.shippingData.postalCode, confirmState.cart)
-        .then(quote => {
-            confirmState.shippingQuote = quote;
-            renderTotals(subtotal, quote.shippingCost);
-            renderShippingLabel(`${quote.shippingLabel}. Plazos: 48/72 hs (stock) o 10-20 días hábiles (bajo pedido).`);
-            setConfirmFeedback('Todo listo. Podés confirmar y pagar.', 'success');
-            syncPayButtonState(false);
-        })
-        .catch(error => {
-            confirmState.shippingQuote = {
-                shippingCost: 0,
-                shippingLabel: 'Envio a cotizar'
-            };
-            renderTotals(subtotal, 0);
-            renderShippingLabel('No pudimos calcular el envío automáticamente para este CP. Podés continuar y lo confirmamos al procesar el pedido.');
-            const fallbackMessage = error?.name === 'AbortError'
-                ? 'La cotización tardó demasiado. Verificá tu conexión y reintentá.'
-                : 'No pudimos calcular el envío.';
-            const message = error?.name === 'AbortError'
-                ? fallbackMessage
-                : (error?.message || fallbackMessage);
-            setConfirmFeedback(message, 'error');
-            syncPayButtonState(false);
-        });
+    saveCheckoutState({
+        ...checkoutState,
+        items: confirmState.cart,
+        totals: {
+            subtotal: confirmState.subtotal,
+            envio: confirmState.shippingCost,
+            installation: confirmState.installationCost,
+            total: confirmState.total
+        },
+        delivery: {
+            ...(checkoutState.delivery || {}),
+            method: 'shipping',
+            postalCode: confirmState.shippingData.postalCode,
+            shippingLabel,
+            shippingReady: true
+        },
+        draftOrderId: confirmState.draftOrderId,
+        draftOrderRef: confirmState.draftOrderRef
+    });
 
     const payButton = document.getElementById('confirm-and-pay-btn');
     if (payButton) {
-        syncPayButtonState(true);
+        syncPayButtonState(false);
         payButton.addEventListener('click', () => {
             handleConfirmAndPay();
         });
@@ -684,3 +870,4 @@ document.addEventListener('DOMContentLoaded', () => {
         redirectWithDelay('/tienda', 'No pudimos cargar la confirmación. Te llevamos a la tienda.');
     });
 });
+})();

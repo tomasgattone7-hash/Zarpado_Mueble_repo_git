@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Admin | Zarpado Mueble</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.min.css">
+    <link rel="icon" href="/favicon.ico">
+</head>
+
+<body data-cart="off">
+    <main class="section checkout-flow-section">
+        <div class="container">
+            <article class="checkout-flow-card" style="max-width: 560px; margin: 0 auto;">
+                <span class="section-tag">Acceso interno</span>
+                <h1 class="section-title checkout-flow-title">Panel de empleados</h1>
+                <p class="section-desc checkout-flow-desc">Ingresá con tu usuario y contraseña para ver los pedidos.</p>
+
+                <form id="admin-login-form" method="POST" action="/admin/login" class="checkout-form" autocomplete="off" novalidate>
+                    <div class="form-group">
+                        <label for="admin-user">Usuario</label>
+                        <input id="admin-user" name="usuario" class="form-input" maxlength="120" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-password">Contraseña</label>
+                        <input id="admin-password" name="password" class="form-input" type="password" maxlength="160" required autocomplete="current-password">
+                    </div>
+                    <button id="admin-login-submit" class="btn btn-primary" type="submit">Ingresar</button>
+                    <p id="admin-login-feedback" class="checkout-flow-feedback" aria-live="polite"></p>
+                </form>
+            </article>
+        </div>
+    </main>
+
+    <script src="/js/admin-login.js" defer></script>
+</body>
+
+</html>

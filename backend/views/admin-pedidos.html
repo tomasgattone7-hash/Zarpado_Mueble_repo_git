@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos Admin | Zarpado Mueble</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/2.0.8/css/dataTables.dataTables.min.css">
+    <link rel="icon" href="/favicon.ico">
+</head>
+
+<body data-cart="off">
+    <main class="section checkout-flow-section">
+        <div class="container">
+            <article class="checkout-flow-card">
+                <span class="section-tag">Panel interno</span>
+                <h1 class="section-title checkout-flow-title">Pedidos guardados</h1>
+                <p class="section-desc checkout-flow-desc">Vista operativa de pedidos con búsqueda, orden, paginación y exportación CSV.</p>
+
+                <div class="shipping-data-grid" style="margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <button id="admin-refresh-btn" type="button" class="btn btn-primary">Actualizar</button>
+                    </div>
+                    <div class="form-group">
+                        <button id="admin-export-csv-btn" type="button" class="btn btn-outline">Exportar CSV</button>
+                    </div>
+                    <div class="form-group">
+                        <a href="/admin/logout" class="btn btn-outline">Cerrar sesión</a>
+                    </div>
+                </div>
+
+                <p id="admin-orders-feedback" class="checkout-flow-feedback" aria-live="polite"></p>
+
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table id="admin-orders-table" class="display" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Fecha</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                                <th>Dirección</th>
+                                <th>Ciudad</th>
+                                <th>Provincia</th>
+                                <th>CP</th>
+                                <th>Subtotal</th>
+                                <th>Envío</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Order ID</th>
+                                <th>Referencia</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-orders-table-body"></tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/2.0.8/dataTables.min.js"></script>
+    <script src="/js/admin-pedidos.js" defer></script>
+</body>
+
+</html>

@@ -3,16 +3,29 @@ const crypto = require('crypto');
 const fs = require('fs');
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const session = require('express-session');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
+const mysql = require('mysql2/promise');
 const mercadopago = require('mercadopago');
 const { MercadoPagoConfig, Preference } = mercadopago;
 const nodemailer = require('nodemailer');
 const { z } = require('zod');
 require('dotenv').config();
+
+function pickEnv(...keys) {
+    for (const key of keys) {
+        const value = process.env[key];
+        if (value !== undefined && value !== null && String(value).trim() !== '') {
+            return String(value).trim();
+        }
+    }
+
+    return '';
+}
 
 const app = express();
 const PORT = Number.parseInt(process.env.PORT, 10) || 3000;
@@ -25,16 +38,35 @@ const isProduction = process.env.NODE_ENV === 'production';
 const FRONTEND_ROOT_PATH = path.resolve(__dirname, '..', 'frontend');
 const FRONTEND_PAGES_PATH = path.resolve(FRONTEND_ROOT_PATH, 'pages');
 const FRONTEND_NOT_FOUND_PATH = path.resolve(FRONTEND_PAGES_PATH, '404.html');
+const ADMIN_LOGIN_VIEW_PATH = path.resolve(__dirname, 'views', 'admin-login.html');
+const ADMIN_PEDIDOS_VIEW_PATH = path.resolve(__dirname, 'views', 'admin-pedidos.html');
 const hasFrontendStaticBundle = fs.existsSync(FRONTEND_ROOT_PATH) && fs.existsSync(FRONTEND_PAGES_PATH);
 const forceHttps = process.env.FORCE_HTTPS === 'true' || isProduction;
 const CSRF_SESSION_COOKIE_NAME = 'zm_sid';
+const ADMIN_SESSION_COOKIE_NAME = String(process.env.SESSION_COOKIE_NAME || 'zm_admin').trim() || 'zm_admin';
 const FORMS_DRY_RUN = process.env.DRY_RUN === 'true';
 const MAX_CSRF_SESSIONS = Number.parseInt(process.env.CSRF_SESSION_MAX, 10) || 5000;
+const ADMIN_SESSION_MAX_AGE_MS = Number.parseInt(process.env.ADMIN_SESSION_MAX_AGE_MS, 10) || (8 * 60 * 60 * 1000);
 const DELIVERY_CONFIG_PATH = path.resolve(__dirname, 'config', 'delivery-config.json');
 const COMMERCE_CONFIG_PATH = path.resolve(__dirname, 'config', 'commerce-config.json');
 const ORDERS_DB_PATH = path.resolve(__dirname, 'data', 'orders.json');
 const QUOTES_DB_PATH = path.resolve(__dirname, 'data', 'quotes.json');
 const CONTACTS_DB_PATH = path.resolve(__dirname, 'data', 'contacts.json');
+const SESSION_SECRET = String(process.env.SESSION_SECRET || '').trim();
+const ADMIN_USER = String(process.env.ADMIN_USER || '').trim();
+const ADMIN_PASSWORD_HASH = String(process.env.ADMIN_PASSWORD_HASH || '').trim();
+const CHECKOUT_CART_COOKIE_NAME = 'zm_cart';
+const DB_HOST = pickEnv('DB_HOST', 'MYSQLHOST', 'MARIADB_HOST', 'DATABASE_HOST');
+const DB_PORT = Number.parseInt(pickEnv('DB_PORT', 'MYSQLPORT', 'MARIADB_PORT', 'DATABASE_PORT'), 10) || 3306;
+const DB_USER = pickEnv('DB_USER', 'MYSQLUSER', 'MARIADB_USER', 'DATABASE_USER');
+const DB_PASSWORD = pickEnv('DB_PASSWORD', 'MYSQLPASSWORD', 'MARIADB_PASSWORD', 'DATABASE_PASSWORD');
+const DB_NAME = pickEnv('DB_NAME', 'MYSQLDATABASE', 'MARIADB_DATABASE', 'DATABASE_NAME');
+const DB_CONNECTION_LIMIT = Number.parseInt(process.env.DB_CONNECTION_LIMIT, 10) || 10;
+const DB_SSL_MODE = String(process.env.DB_SSL_MODE || '').trim().toLowerCase();
+const DB_SSL_CA_PATH = String(process.env.DB_SSL_CA_PATH || '').trim();
+const DB_SSL_KEY_PATH = String(process.env.DB_SSL_KEY_PATH || '').trim();
+const DB_SSL_CERT_PATH = String(process.env.DB_SSL_CERT_PATH || '').trim();
+const DB_SSL_REJECT_UNAUTHORIZED = process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false';
 const POSTAL_CODE_PATTERN = /^\d{4}$/;
 const ORDER_ID_PATTERN = /^ZM-\d{13}-[A-F0-9]{6}$/;
 const EXTERNAL_REFERENCE_PATTERN = /^ORDER_\d{13}_[A-Z0-9]{6}$/;
@@ -93,7 +125,6 @@ const QUOTE_UPLOAD_FIELDS = QUOTE_UPLOAD_FIELD_NAMES.map(name => ({
     maxCount: QUOTE_MAX_FILES
 }));
 
-const DEFAULT_ADMIN_PANEL_TOKEN = 'dev-admin-token';
 const ORDER_TYPE_STORE = 'tienda';
 const ORDER_TYPE_CUSTOM = 'a_medida';
 const PAYMENT_METHODS = Object.freeze({
@@ -273,6 +304,302 @@ function generateRequestId() {
     return crypto.randomBytes(16).toString('hex');
 }
 
+let mariaDbPool = null;
+let mariaDbEnabled = false;
+let mariaDbInitialized = false;
+
+function isLoopbackHost(hostname) {
+    const normalized = String(hostname || '').trim().toLowerCase();
+    return (
+        normalized === 'localhost'
+        || normalized === '127.0.0.1'
+        || normalized === '::1'
+        || normalized === '[::1]'
+    );
+}
+
+function shouldUseMariaDbTls() {
+    if (process.env.DB_SSL === 'true') {
+        return true;
+    }
+
+    if (process.env.DB_SSL === 'false') {
+        return false;
+    }
+
+    if (['required', 'verify_ca', 'verify_full'].includes(DB_SSL_MODE)) {
+        return true;
+    }
+
+    return Boolean(DB_HOST) && !isLoopbackHost(DB_HOST);
+}
+
+function readTextFileIfExists(filePath) {
+    if (!filePath) {
+        return '';
+    }
+
+    try {
+        if (!fs.existsSync(filePath)) {
+            return '';
+        }
+
+        return fs.readFileSync(filePath, 'utf8');
+    } catch {
+        return '';
+    }
+}
+
+function buildMariaDbSslConfig() {
+    if (!shouldUseMariaDbTls()) {
+        return undefined;
+    }
+
+    const sslConfig = {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: DB_SSL_REJECT_UNAUTHORIZED
+    };
+    const ca = readTextFileIfExists(DB_SSL_CA_PATH);
+    const key = readTextFileIfExists(DB_SSL_KEY_PATH);
+    const cert = readTextFileIfExists(DB_SSL_CERT_PATH);
+
+    if (ca) {
+        sslConfig.ca = ca;
+    }
+
+    if (key) {
+        sslConfig.key = key;
+    }
+
+    if (cert) {
+        sslConfig.cert = cert;
+    }
+
+    return sslConfig;
+}
+
+function hasMariaDbConfig() {
+    return Boolean(DB_HOST && DB_USER && DB_PASSWORD && DB_NAME);
+}
+
+function getMissingCheckoutEnvKeys() {
+    const missing = [];
+    if (!DB_HOST) missing.push('DB_HOST');
+    if (!DB_USER) missing.push('DB_USER');
+    if (!DB_PASSWORD) missing.push('DB_PASSWORD');
+    if (!DB_NAME) missing.push('DB_NAME');
+    return missing;
+}
+
+function getMissingAdminEnvKeys() {
+    const missing = [];
+    if (!SESSION_SECRET) missing.push('SESSION_SECRET');
+    if (!ADMIN_USER) missing.push('ADMIN_USER');
+    if (!ADMIN_PASSWORD_HASH) missing.push('ADMIN_PASSWORD_HASH');
+    return missing;
+}
+
+function isSafeSqlIdentifier(value) {
+    return /^[A-Za-z0-9_]+$/.test(String(value || ''));
+}
+
+async function initializeMariaDb() {
+    if (mariaDbInitialized) {
+        return mariaDbEnabled;
+    }
+    mariaDbInitialized = true;
+
+    if (!hasMariaDbConfig()) {
+        const missingDbKeys = getMissingCheckoutEnvKeys();
+        console.warn(`⚠️ MariaDB deshabilitada: faltan ${missingDbKeys.join(', ')} en variables de entorno.`);
+        return false;
+    }
+
+    if (!isSafeSqlIdentifier(DB_NAME)) {
+        console.error(`❌ DB_NAME inválido (${DB_NAME}). Solo se permiten letras, números y guion bajo.`);
+        return false;
+    }
+
+    const ssl = buildMariaDbSslConfig();
+    const baseConfig = {
+        host: DB_HOST,
+        port: DB_PORT,
+        user: DB_USER,
+        password: DB_PASSWORD,
+        ssl
+    };
+
+    try {
+        const bootstrapConnection = await mysql.createConnection(baseConfig);
+        await bootstrapConnection.query(
+            `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+        );
+        await bootstrapConnection.end();
+
+        mariaDbPool = mysql.createPool({
+            ...baseConfig,
+            database: DB_NAME,
+            waitForConnections: true,
+            connectionLimit: DB_CONNECTION_LIMIT,
+            queueLimit: 0,
+            decimalNumbers: true
+        });
+
+        await mariaDbPool.query(`
+            CREATE TABLE IF NOT EXISTS pedidos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(100) NOT NULL,
+                email VARCHAR(100) NOT NULL,
+                telefono VARCHAR(20) NOT NULL,
+                direccion VARCHAR(150) NOT NULL,
+                ciudad VARCHAR(50) NOT NULL,
+                provincia VARCHAR(50) NOT NULL,
+                codigo_postal VARCHAR(10) NOT NULL,
+                subtotal DECIMAL(12,2) NOT NULL,
+                envio DECIMAL(12,2) NOT NULL,
+                instalacion DECIMAL(12,2) NOT NULL DEFAULT 0,
+                total DECIMAL(12,2) NOT NULL,
+                order_id VARCHAR(40) NULL,
+                external_reference VARCHAR(60) NULL,
+                estado VARCHAR(40) NOT NULL DEFAULT 'draft',
+                fecha_creado TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fecha_actualizado TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_pedidos_email (email),
+                INDEX idx_pedidos_fecha (fecha_creado),
+                INDEX idx_pedidos_estado (estado),
+                UNIQUE KEY uniq_order_id (order_id)
+            ) ENGINE=InnoDB
+        `);
+        await mariaDbPool.query(
+            'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS instalacion DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER envio'
+        );
+
+        mariaDbEnabled = true;
+        console.log(`🗄️ MariaDB conectada en ${DB_HOST}:${DB_PORT}/${DB_NAME} (TLS: ${shouldUseMariaDbTls() ? 'sí' : 'no'})`);
+        return true;
+    } catch (error) {
+        mariaDbPool = null;
+        mariaDbEnabled = false;
+        console.error(`❌ No se pudo inicializar MariaDB (${error.message})`);
+        return false;
+    }
+}
+
+function getMariaDbPoolOrNull() {
+    return mariaDbEnabled ? mariaDbPool : null;
+}
+
+function timingSafeEqualStrings(leftValue, rightValue) {
+    const leftBuffer = Buffer.from(String(leftValue || ''), 'utf8');
+    const rightBuffer = Buffer.from(String(rightValue || ''), 'utf8');
+    const maxLength = Math.max(leftBuffer.length, rightBuffer.length, 1);
+    const paddedLeft = Buffer.alloc(maxLength);
+    const paddedRight = Buffer.alloc(maxLength);
+    leftBuffer.copy(paddedLeft);
+    rightBuffer.copy(paddedRight);
+    const equal = crypto.timingSafeEqual(paddedLeft, paddedRight);
+    return equal && leftBuffer.length === rightBuffer.length;
+}
+
+function parseAdminPasswordHash(hashValue) {
+    const normalized = String(hashValue || '').trim();
+    if (!normalized) {
+        return null;
+    }
+
+    // Formato recomendado: scrypt$N$r$p$saltHex$hashHex
+    const scryptParts = normalized.split('$');
+    if (scryptParts.length === 6 && scryptParts[0] === 'scrypt') {
+        const N = Number.parseInt(scryptParts[1], 10);
+        const r = Number.parseInt(scryptParts[2], 10);
+        const p = Number.parseInt(scryptParts[3], 10);
+        const saltHex = scryptParts[4];
+        const hashHex = scryptParts[5];
+
+        if (!Number.isInteger(N) || N < 2 || (N & (N - 1)) !== 0) {
+            return null;
+        }
+
+        if (!Number.isInteger(r) || r < 1 || !Number.isInteger(p) || p < 1) {
+            return null;
+        }
+
+        if (!/^[a-f0-9]+$/i.test(saltHex) || !/^[a-f0-9]+$/i.test(hashHex)) {
+            return null;
+        }
+
+        if (saltHex.length < 16 || hashHex.length < 64) {
+            return null;
+        }
+
+        return {
+            format: 'scrypt',
+            salt: Buffer.from(saltHex, 'hex'),
+            hash: Buffer.from(hashHex, 'hex'),
+            options: {
+                N,
+                r,
+                p
+            }
+        };
+    }
+
+    // Compatibilidad legacy: saltHex:hashHex
+    const [saltHex, hashHex] = normalized.split(':');
+    if (!saltHex || !hashHex) {
+        return null;
+    }
+
+    if (!/^[a-f0-9]+$/i.test(saltHex) || !/^[a-f0-9]+$/i.test(hashHex)) {
+        return null;
+    }
+
+    if (saltHex.length < 16 || hashHex.length < 64) {
+        return null;
+    }
+
+    return {
+        format: 'legacy',
+        salt: Buffer.from(saltHex, 'hex'),
+        hash: Buffer.from(hashHex, 'hex'),
+        options: {}
+    };
+}
+
+async function verifyAdminPassword(password) {
+    const parsedHash = parseAdminPasswordHash(ADMIN_PASSWORD_HASH);
+    if (!parsedHash) {
+        return false;
+    }
+
+    const candidate = await new Promise((resolve, reject) => {
+        crypto.scrypt(
+            String(password || ''),
+            parsedHash.salt,
+            parsedHash.hash.length,
+            parsedHash.options,
+            (error, derivedKey) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                resolve(derivedKey);
+            }
+        );
+    });
+
+    return crypto.timingSafeEqual(parsedHash.hash, candidate);
+}
+
+function ensureAdminSession(request) {
+    return Boolean(
+        request.session
+        && request.session.isAdminAuthenticated === true
+        && request.session.adminUser
+    );
+}
+
 const quoteUpload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -320,7 +647,43 @@ function parsePayloadWithSchema(schema, payload, fallbackMessage = 'Datos invál
     }
 
     const firstIssue = parsed.error.issues?.[0];
-    throw createApiError(firstIssue?.message || fallbackMessage, 400);
+    const issuePath = Array.isArray(firstIssue?.path)
+        ? firstIssue.path.filter(Boolean).join('.')
+        : '';
+    const rawIssueMessage = String(firstIssue?.message || '').trim();
+    const isRequiredIssue = rawIssueMessage.toLowerCase() === 'required';
+    const friendlyPathLabels = {
+        fullName: 'nombre completo',
+        email: 'email',
+        phone: 'teléfono',
+        addressLine: 'dirección',
+        city: 'ciudad',
+        province: 'provincia',
+        postalCode: 'código postal',
+        cart: 'carrito',
+        'cart.items': 'items del carrito',
+        'cart.subtotal': 'subtotal',
+        'cart.envio': 'costo de envío',
+        'cart.total': 'total'
+    };
+    const fallbackByPath = {
+        cart: 'Falta el carrito para continuar. Volvé al carrito e iniciá checkout nuevamente.',
+        'cart.items': 'El carrito está vacío. Agregá productos para continuar.'
+    };
+    let resolvedMessage = rawIssueMessage || fallbackMessage;
+    if (issuePath === 'cart.items' && firstIssue?.code === 'too_small') {
+        resolvedMessage = fallbackByPath['cart.items'];
+    } else if (isRequiredIssue) {
+        if (issuePath && fallbackByPath[issuePath]) {
+            resolvedMessage = fallbackByPath[issuePath];
+        } else if (issuePath && friendlyPathLabels[issuePath]) {
+            resolvedMessage = `Falta ${friendlyPathLabels[issuePath]}.`;
+        } else {
+            resolvedMessage = fallbackMessage;
+        }
+    }
+
+    throw createApiError(resolvedMessage, 400);
 }
 
 const checkoutItemPayloadSchema = z.object({
@@ -351,6 +714,8 @@ const checkoutPayloadSchema = z.object({
         postalCode: z.string().optional(),
         installationRequested: z.boolean().optional()
     }).passthrough(),
+    draftOrderId: z.coerce.number().int().positive().optional(),
+    orderId: z.string().trim().max(80).optional(),
     paymentMethod: z.string().trim().max(40).optional(),
     buyerEmail: z.string().trim().max(160).optional(),
     email: z.string().trim().max(160).optional(),
@@ -520,6 +885,119 @@ const deliveryQuotePayloadSchema = z.object({
     items: z.array(checkoutItemPayloadSchema).max(MAX_CART_ITEMS).optional()
 }).passthrough();
 
+const draftPedidoPayloadSchema = z.object({
+    nombre: z.string().trim().min(2).max(100),
+    email: z.string().trim().max(100).email('Email inválido'),
+    telefono: z.string().trim().min(6).max(20),
+    direccion: z.string().trim().min(4).max(150),
+    ciudad: z.string().trim().min(2).max(50),
+    provincia: z.string().trim().min(2).max(50),
+    codigo_postal: z.string().trim().min(4).max(10),
+    subtotal: z.coerce.number().nonnegative(),
+    envio: z.coerce.number().nonnegative(),
+    total: z.coerce.number().nonnegative(),
+    items: z.array(checkoutItemPayloadSchema).min(1).max(MAX_CART_ITEMS)
+}).passthrough().superRefine((value, ctx) => {
+    if (!NAME_PATTERN.test(value.nombre)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['nombre'],
+            message: 'Nombre inválido'
+        });
+    }
+
+    if (!PHONE_PATTERN.test(value.telefono)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['telefono'],
+            message: 'Teléfono inválido'
+        });
+    }
+
+    if (!CITY_NEIGHBORHOOD_PATTERN.test(value.ciudad)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['ciudad'],
+            message: 'Ciudad inválida'
+        });
+    }
+
+    if (!CITY_NEIGHBORHOOD_PATTERN.test(value.provincia)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['provincia'],
+            message: 'Provincia inválida'
+        });
+    }
+
+    const normalizedPostalCode = normalizePostalCode(value.codigo_postal);
+    if (!POSTAL_CODE_PATTERN.test(normalizedPostalCode)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['codigo_postal'],
+            message: 'Código postal inválido'
+        });
+    }
+});
+
+const checkoutShippingPayloadSchema = z.object({
+    fullName: z.string().trim().min(2).max(100),
+    email: z.string().trim().max(100).email('Email inválido'),
+    phone: z.string().trim().min(6).max(20),
+    addressLine: z.string().trim().min(4).max(150),
+    city: z.string().trim().min(2).max(50),
+    province: z.string().trim().min(2).max(50),
+    postalCode: z.string().trim().min(4).max(10),
+    cart: z.object({
+        items: z.array(checkoutItemPayloadSchema).min(1).max(MAX_CART_ITEMS),
+        subtotal: z.coerce.number().nonnegative().optional(),
+        envio: z.coerce.number().nonnegative().optional(),
+        installation: z.coerce.number().nonnegative().optional(),
+        total: z.coerce.number().nonnegative().optional()
+    })
+}).passthrough().superRefine((value, ctx) => {
+    if (!NAME_PATTERN.test(value.fullName)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['fullName'],
+            message: 'Nombre inválido'
+        });
+    }
+
+    if (!PHONE_PATTERN.test(value.phone)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['phone'],
+            message: 'Teléfono inválido'
+        });
+    }
+
+    if (!CITY_NEIGHBORHOOD_PATTERN.test(value.city)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['city'],
+            message: 'Ciudad inválida'
+        });
+    }
+
+    if (!CITY_NEIGHBORHOOD_PATTERN.test(value.province)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['province'],
+            message: 'Provincia inválida'
+        });
+    }
+
+    const normalizedPostalCode = normalizePostalCode(value.postalCode);
+    if (!POSTAL_CODE_PATTERN.test(normalizedPostalCode)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['postalCode'],
+            message: 'Código postal inválido'
+        });
+    }
+});
+
 function getRequestIpAddress(request) {
     const forwardedFor = String(request.get('x-forwarded-for') || '').trim();
     if (forwardedFor) {
@@ -600,6 +1078,157 @@ function normalizeQuoteFormPayload(payload = {}) {
         company: pickFirstFormValue(source, ['company', 'empresa']),
         website: pickFirstFormValue(source, ['website', 'web', 'sitio'])
     };
+}
+
+function parsePossibleJsonObject(value) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value;
+    }
+
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+        return null;
+    }
+
+    try {
+        const parsed = JSON.parse(normalized);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed
+            : null;
+    } catch {
+        return null;
+    }
+}
+
+function parsePossibleJsonArray(value) {
+    if (Array.isArray(value)) {
+        return value;
+    }
+
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+        return null;
+    }
+
+    try {
+        const parsed = JSON.parse(normalized);
+        return Array.isArray(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function normalizeCheckoutShippingPayload(payload = {}) {
+    const source = payload && typeof payload === 'object' ? payload : {};
+    const parsedCart = parsePossibleJsonObject(source.cart);
+    const parsedItems = parsePossibleJsonArray(source.items);
+
+    const normalizedCart = parsedCart || {
+        items: parsedItems || (Array.isArray(source.items) ? source.items : []),
+        subtotal: source.subtotal,
+        envio: source.envio,
+        installation: source.installation,
+        total: source.total
+    };
+
+    if (!Array.isArray(normalizedCart.items)) {
+        normalizedCart.items = [];
+    }
+
+    return {
+        ...source,
+        fullName: pickFirstFormValue(source, ['fullName', 'nombre', 'name']),
+        email: pickFirstFormValue(source, ['email', 'correo', 'mail']),
+        phone: pickFirstFormValue(source, ['phone', 'telefono', 'tel']),
+        addressLine: pickFirstFormValue(source, ['addressLine', 'direccion', 'address']),
+        city: pickFirstFormValue(source, ['city', 'ciudad']),
+        province: pickFirstFormValue(source, ['province', 'provincia']),
+        postalCode: pickFirstFormValue(source, ['postalCode', 'codigo_postal', 'zip', 'codigoPostal']),
+        cart: normalizedCart
+    };
+}
+
+function parseCheckoutItemsFromCookie(rawValue) {
+    if (typeof rawValue !== 'string' || !rawValue.trim()) {
+        return [];
+    }
+
+    const decodeCandidates = [rawValue.trim()];
+    try {
+        decodeCandidates.unshift(decodeURIComponent(rawValue.trim()));
+    } catch {
+        // Use raw value fallback.
+    }
+
+    for (const candidate of decodeCandidates) {
+        try {
+            const parsed = JSON.parse(candidate);
+            if (!Array.isArray(parsed)) {
+                continue;
+            }
+
+            return parsed
+                .slice(0, MAX_CART_ITEMS)
+                .map(item => ({
+                    id: Number.parseInt(item?.id, 10),
+                    quantity: Number.parseInt(item?.quantity ?? item?.qty ?? item?.cantidad, 10),
+                    unit_price: Number.parseInt(item?.unit_price ?? item?.price, 10) || undefined
+                }))
+                .filter(item => Number.isInteger(item.id) && item.id > 0 && Number.isInteger(item.quantity) && item.quantity > 0);
+        } catch {
+            // Continue with next candidate.
+        }
+    }
+
+    return [];
+}
+
+function ensureCheckoutPayloadHasItems(payload = {}, request = null) {
+    const source = payload && typeof payload === 'object' ? payload : {};
+    const currentItems = Array.isArray(source?.cart?.items) ? source.cart.items : [];
+    if (currentItems.length > 0) {
+        return source;
+    }
+
+    const cookieItems = parseCheckoutItemsFromCookie(request?.cookies?.[CHECKOUT_CART_COOKIE_NAME]);
+    if (cookieItems.length === 0) {
+        return source;
+    }
+
+    const sourceCart = source.cart && typeof source.cart === 'object' && !Array.isArray(source.cart)
+        ? source.cart
+        : {};
+
+    return {
+        ...source,
+        items: Array.isArray(source.items) && source.items.length > 0 ? source.items : cookieItems,
+        cart: {
+            ...sourceCart,
+            items: cookieItems
+        }
+    };
+}
+
+function isHtmlCheckoutShippingSubmission(request) {
+    const contentType = String(request.get('content-type') || '').toLowerCase();
+    if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+        return true;
+    }
+
+    const acceptHeader = String(request.get('accept') || '').toLowerCase();
+    if (acceptHeader.includes('application/json')) {
+        return false;
+    }
+
+    return acceptHeader.includes('text/html');
 }
 
 function getFormHoneypotValue(payload = {}) {
@@ -1279,6 +1908,54 @@ function parseCheckoutCustomerData(checkoutPayload = {}) {
     };
 }
 
+function buildCustomerDataFromDraftPedido(pedido = {}) {
+    const fullName = sanitizeSingleLine(pedido.nombre, 120);
+    const email = sanitizeEmail(pedido.email);
+    const phone = sanitizeSingleLine(pedido.telefono, 40);
+    const addressLine = sanitizeSingleLine(pedido.direccion, 180);
+    const city = sanitizeSingleLine(pedido.ciudad, 80);
+    const province = sanitizeSingleLine(pedido.provincia, 80);
+    const postalCode = normalizePostalCode(pedido.codigo_postal);
+    const splitAddress = splitAddressLine(addressLine);
+
+    if (!fullName || !email || !phone || !addressLine || !city || !province || !postalCode) {
+        return {
+            ok: false,
+            reason: 'El pedido draft no tiene datos de envío completos.'
+        };
+    }
+
+    if (!POSTAL_CODE_PATTERN.test(postalCode)) {
+        return {
+            ok: false,
+            reason: 'El código postal del pedido draft es inválido.'
+        };
+    }
+
+    return {
+        ok: true,
+        buyerEmail: email,
+        customerData: {
+            fullName,
+            phone,
+            email,
+            documentId: '',
+            street: splitAddress.street,
+            streetNumber: splitAddress.streetNumber,
+            city,
+            province,
+            postalCode,
+            floorApartment: '',
+            neighborhood: '',
+            addressReference: '',
+            receiverType: 'yo',
+            receiverName: fullName,
+            availableSchedule: '',
+            additionalNotes: ''
+        }
+    };
+}
+
 function postalCodeToNumber(postalCode) {
     return Number.parseInt(postalCode, 10);
 }
@@ -1504,6 +2181,290 @@ function calculateDelivery(rawDelivery, config, validatedItems = []) {
         installationBaseCost,
         installationCost: installationRequested ? installationBaseCost : 0,
         shippingMeta
+    };
+}
+
+function normalizeMoneyAmount(value) {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return 0;
+    }
+
+    return Math.round(parsed * 100) / 100;
+}
+
+function normalizeDraftPedidoRow(row = {}) {
+    return {
+        id: Number.parseInt(row.id, 10) || 0,
+        nombre: sanitizeSingleLine(row.nombre, 100),
+        email: sanitizeEmail(row.email),
+        telefono: sanitizeSingleLine(row.telefono, 20),
+        direccion: sanitizeSingleLine(row.direccion, 150),
+        ciudad: sanitizeSingleLine(row.ciudad, 50),
+        provincia: sanitizeSingleLine(row.provincia, 50),
+        codigo_postal: sanitizeSingleLine(row.codigo_postal, 10),
+        subtotal: normalizeMoneyAmount(row.subtotal),
+        envio: normalizeMoneyAmount(row.envio),
+        instalacion: normalizeMoneyAmount(row.instalacion),
+        total: normalizeMoneyAmount(row.total),
+        order_id: sanitizeSingleLine(row.order_id, 40),
+        external_reference: sanitizeSingleLine(row.external_reference, 60),
+        estado: sanitizeSingleLine(row.estado, 40) || 'draft',
+        fecha_creado: row.fecha_creado ? new Date(row.fecha_creado).toISOString() : null,
+        fecha_actualizado: row.fecha_actualizado ? new Date(row.fecha_actualizado).toISOString() : null
+    };
+}
+
+async function insertDraftPedidoInMariaDb(payload = {}) {
+    const pool = getMariaDbPoolOrNull();
+    if (!pool) {
+        return null;
+    }
+
+    const [result] = await pool.query(
+        `INSERT INTO pedidos (
+            nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
+            subtotal, envio, instalacion, total, order_id, external_reference, estado
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            sanitizeSingleLine(payload.nombre, 100),
+            sanitizeEmail(payload.email),
+            sanitizeSingleLine(payload.telefono, 20),
+            sanitizeSingleLine(payload.direccion, 150),
+            sanitizeSingleLine(payload.ciudad, 50),
+            sanitizeSingleLine(payload.provincia, 50),
+            sanitizeSingleLine(payload.codigo_postal, 10),
+            normalizeMoneyAmount(payload.subtotal),
+            normalizeMoneyAmount(payload.envio),
+            normalizeMoneyAmount(payload.instalacion),
+            normalizeMoneyAmount(payload.total),
+            sanitizeSingleLine(payload.order_id, 40) || null,
+            sanitizeSingleLine(payload.external_reference, 60) || null,
+            sanitizeSingleLine(payload.estado, 40) || 'draft'
+        ]
+    );
+
+    return Number.parseInt(result.insertId, 10) || null;
+}
+
+async function findDraftPedidoByIdInMariaDb(id) {
+    const pool = getMariaDbPoolOrNull();
+    const draftId = Number.parseInt(id, 10);
+    if (!pool || !Number.isInteger(draftId) || draftId < 1) {
+        return null;
+    }
+
+    const [rows] = await pool.query(
+        `SELECT
+            id, nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
+            subtotal, envio, instalacion, total, order_id, external_reference, estado, fecha_creado, fecha_actualizado
+         FROM pedidos
+         WHERE id = ?
+         LIMIT 1`,
+        [draftId]
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return null;
+    }
+
+    return normalizeDraftPedidoRow(rows[0]);
+}
+
+async function findDraftPedidoByOrderIdInMariaDb(orderId) {
+    const pool = getMariaDbPoolOrNull();
+    const normalizedOrderId = sanitizeSingleLine(orderId, 40);
+    if (!pool || !normalizedOrderId) {
+        return null;
+    }
+
+    const [rows] = await pool.query(
+        `SELECT
+            id, nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
+            subtotal, envio, instalacion, total, order_id, external_reference, estado, fecha_creado, fecha_actualizado
+         FROM pedidos
+         WHERE order_id = ?
+         LIMIT 1`,
+        [normalizedOrderId]
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return null;
+    }
+
+    return normalizeDraftPedidoRow(rows[0]);
+}
+
+async function updateDraftPedidoInMariaDbById(id, payload = {}) {
+    const pool = getMariaDbPoolOrNull();
+    const draftId = Number.parseInt(id, 10);
+    if (!pool || !Number.isInteger(draftId) || draftId < 1) {
+        return 0;
+    }
+
+    const [result] = await pool.query(
+        `UPDATE pedidos
+         SET nombre = ?, email = ?, telefono = ?, direccion = ?, ciudad = ?, provincia = ?, codigo_postal = ?,
+             subtotal = ?, envio = ?, instalacion = ?, total = ?, order_id = ?, external_reference = ?, estado = ?
+         WHERE id = ?`,
+        [
+            sanitizeSingleLine(payload.nombre, 100),
+            sanitizeEmail(payload.email),
+            sanitizeSingleLine(payload.telefono, 20),
+            sanitizeSingleLine(payload.direccion, 150),
+            sanitizeSingleLine(payload.ciudad, 50),
+            sanitizeSingleLine(payload.provincia, 50),
+            sanitizeSingleLine(payload.codigo_postal, 10),
+            normalizeMoneyAmount(payload.subtotal),
+            normalizeMoneyAmount(payload.envio),
+            normalizeMoneyAmount(payload.instalacion),
+            normalizeMoneyAmount(payload.total),
+            sanitizeSingleLine(payload.order_id, 40) || null,
+            sanitizeSingleLine(payload.external_reference, 60) || null,
+            sanitizeSingleLine(payload.estado, 40) || 'draft',
+            draftId
+        ]
+    );
+
+    return Number.parseInt(result.affectedRows, 10) || 0;
+}
+
+async function syncStoreOrderToMariaDb(order, options = {}) {
+    const pool = getMariaDbPoolOrNull();
+    if (!pool || !order || normalizeText(order.orderType, 20).toLowerCase() !== ORDER_TYPE_STORE) {
+        return null;
+    }
+
+    const customer = order.customerData || {};
+    const derivedAddressLine = sanitizeSingleLine(
+        [
+            sanitizeSingleLine(customer.street, 120),
+            sanitizeSingleLine(customer.streetNumber, 40)
+        ].filter(Boolean).join(' '),
+        150
+    );
+    const draftPayload = {
+        nombre: sanitizeSingleLine(customer.fullName, 100),
+        email: sanitizeEmail(customer.email || order.buyerEmail),
+        telefono: sanitizeSingleLine(customer.phone, 20),
+        direccion: sanitizeSingleLine(customer.addressLine || customer.address, 150) || derivedAddressLine,
+        ciudad: sanitizeSingleLine(customer.city, 50),
+        provincia: sanitizeSingleLine(customer.province, 50),
+        codigo_postal: sanitizeSingleLine(customer.postalCode, 10),
+        subtotal: normalizeMoneyAmount(order?.totals?.subtotal),
+        envio: normalizeMoneyAmount(order?.totals?.shipping),
+        instalacion: normalizeMoneyAmount(order?.totals?.installation),
+        total: normalizeMoneyAmount(order?.totals?.total),
+        order_id: sanitizeSingleLine(order.orderId, 40),
+        external_reference: sanitizeSingleLine(order.externalReference, 60),
+        estado: sanitizeSingleLine(order.fulfillmentStatus || order.checkoutStatus, 40) || 'checkout_created'
+    };
+
+    const draftOrderId = Number.parseInt(options.draftOrderId, 10);
+    if (Number.isInteger(draftOrderId) && draftOrderId > 0) {
+        const affectedRows = await updateDraftPedidoInMariaDbById(draftOrderId, draftPayload);
+        if (affectedRows > 0) {
+            return draftOrderId;
+        }
+    }
+
+    const orderId = sanitizeSingleLine(order.orderId, 40);
+    if (orderId) {
+        const existingDraftByOrderId = await findDraftPedidoByOrderIdInMariaDb(orderId);
+        const existingDraftId = Number.parseInt(existingDraftByOrderId?.id, 10);
+        if (Number.isInteger(existingDraftId) && existingDraftId > 0) {
+            const affectedRows = await updateDraftPedidoInMariaDbById(existingDraftId, draftPayload);
+            if (affectedRows > 0) {
+                return existingDraftId;
+            }
+        }
+    }
+
+    return insertDraftPedidoInMariaDb(draftPayload);
+}
+
+async function updatePedidoStatusInMariaDb(orderId, status) {
+    const pool = getMariaDbPoolOrNull();
+    const normalizedOrderId = sanitizeSingleLine(orderId, 40);
+    const normalizedStatus = sanitizeSingleLine(status, 40);
+    if (!pool || !normalizedOrderId || !normalizedStatus) {
+        return 0;
+    }
+
+    const [result] = await pool.query(
+        'UPDATE pedidos SET estado = ? WHERE order_id = ?',
+        [normalizedStatus, normalizedOrderId]
+    );
+    return Number.parseInt(result.affectedRows, 10) || 0;
+}
+
+async function listDraftPedidosFromMariaDb(limit = 500) {
+    const pool = getMariaDbPoolOrNull();
+    if (!pool) {
+        return [];
+    }
+
+    const normalizedLimit = Math.max(1, Math.min(1000, Number.parseInt(limit, 10) || 200));
+    const [rows] = await pool.query(
+        `SELECT
+            id, nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
+            subtotal, envio, total, order_id, external_reference, estado, fecha_creado, fecha_actualizado
+         FROM pedidos
+         ORDER BY fecha_creado DESC
+         LIMIT ?`,
+        [normalizedLimit]
+    );
+
+    return Array.isArray(rows) ? rows.map(normalizeDraftPedidoRow) : [];
+}
+
+function buildShippingLabelFromPostalCode(postalCode, validatedItems = []) {
+    try {
+        const deliveryConfig = loadDeliveryConfig();
+        const delivery = calculateDelivery(
+            {
+                method: DELIVERY_METHODS.SHIPPING,
+                postalCode,
+                installationRequested: false
+            },
+            deliveryConfig,
+            validatedItems
+        );
+        return sanitizeSingleLine(delivery.shippingLabel, 80) || 'Envío a domicilio';
+    } catch {
+        return 'Envío a domicilio';
+    }
+}
+
+function mapDraftPedidoToCheckoutSummary(pedido = {}, shippingLabel = '') {
+    const subtotal = Math.round(Number(pedido.subtotal) || 0);
+    const envio = Math.round(Number(pedido.envio) || 0);
+    const total = Math.round(Number(pedido.total) || 0);
+    const installationFromRow = Math.round(Number(pedido.instalacion) || 0);
+    const derivedInstallation = Math.max(0, total - subtotal - envio);
+    const installation = installationFromRow > 0 ? installationFromRow : derivedInstallation;
+    return {
+        id: Number.parseInt(pedido.id, 10) || 0,
+        orderId: sanitizeSingleLine(pedido.order_id, 40),
+        estado: sanitizeSingleLine(pedido.estado, 40) || 'draft',
+        shipping: {
+            fullName: sanitizeSingleLine(pedido.nombre, 100),
+            email: sanitizeEmail(pedido.email),
+            phone: sanitizeSingleLine(pedido.telefono, 20),
+            addressLine: sanitizeSingleLine(pedido.direccion, 150),
+            city: sanitizeSingleLine(pedido.ciudad, 50),
+            province: sanitizeSingleLine(pedido.provincia, 50),
+            postalCode: sanitizeSingleLine(pedido.codigo_postal, 10)
+        },
+        totals: {
+            subtotal,
+            envio,
+            installation,
+            total: Math.max(total, subtotal + envio + installation)
+        },
+        shippingLabel: sanitizeSingleLine(shippingLabel, 80) || buildShippingLabelFromPostalCode(pedido.codigo_postal),
+        createdAt: pedido.fecha_creado || null,
+        updatedAt: pedido.fecha_actualizado || null
     };
 }
 
@@ -1795,8 +2756,8 @@ const corsOptions = {
         return callback(new Error('Origen no permitido por CORS'));
     },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token', 'X-Admin-Token', 'X-Request-Id'],
-    credentials: false,
+    allowedHeaders: ['Content-Type', 'Accept', 'X-CSRF-Token', 'X-Request-Id'],
+    credentials: true,
     optionsSuccessStatus: 204
 };
 
@@ -1822,6 +2783,29 @@ app.use((request, response, next) => {
 });
 app.use(compression({ threshold: 1024 }));
 app.use(cookieParser());
+const runtimeSessionSecret = SESSION_SECRET || (isProduction ? '' : crypto.randomBytes(48).toString('hex'));
+if (!SESSION_SECRET) {
+    if (isProduction) {
+        console.error('❌ SESSION_SECRET no está configurado. El login de admin permanecerá deshabilitado.');
+    } else {
+        console.warn('⚠️ SESSION_SECRET no configurado. Se usa un secreto efímero para entorno local.');
+    }
+}
+
+if (runtimeSessionSecret) {
+    app.use(session({
+        name: ADMIN_SESSION_COOKIE_NAME,
+        secret: runtimeSessionSecret,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: forceHttps,
+            sameSite: 'lax',
+            maxAge: ADMIN_SESSION_MAX_AGE_MS
+        }
+    }));
+}
 app.use(express.json({ limit: '1mb', strict: true }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
@@ -1943,47 +2927,51 @@ function requireAllowedOrigin(request, response, next) {
     return response.status(403).json({ ok: false, error: 'Origen no permitido', code: 'origin_not_allowed' });
 }
 
-function safeCompareTokens(leftValue, rightValue) {
-    const left = String(leftValue || '');
-    const right = String(rightValue || '');
-    if (!left || !right || left.length !== right.length) {
-        return false;
-    }
-
-    return crypto.timingSafeEqual(Buffer.from(left), Buffer.from(right));
+function isAdminAuthConfigured() {
+    return Boolean(
+        runtimeSessionSecret
+        && ADMIN_USER
+        && parseAdminPasswordHash(ADMIN_PASSWORD_HASH)
+    );
 }
 
-function getAdminPanelToken() {
-    const configured = normalizeText(process.env.ADMIN_PANEL_TOKEN, 200);
-    if (configured) {
-        return configured;
+function requireAdminPageAuth(request, response, next) {
+    if (!isAdminAuthConfigured()) {
+        return response.status(503).send('Panel interno no disponible. Configurá credenciales de administrador.');
     }
 
-    return isProduction ? '' : DEFAULT_ADMIN_PANEL_TOKEN;
+    if (ensureAdminSession(request)) {
+        return next();
+    }
+
+    return response.redirect('/admin/login');
 }
 
 function requireAdminAuth(request, response, next) {
-    const expectedToken = getAdminPanelToken();
-    if (!expectedToken) {
+    if (!isAdminAuthConfigured()) {
         return response.status(503).json({
             ok: false,
-            error: 'Panel interno no disponible. Configurá ADMIN_PANEL_TOKEN en el servidor.'
+            error: 'Panel interno no disponible. Configurá ADMIN_USER, ADMIN_PASSWORD_HASH y SESSION_SECRET.'
         });
     }
 
-    const providedToken = normalizeText(
-        request.get('x-admin-token')
-        || request.query?.token
-        || request.body?.adminToken,
-        200
-    );
-
-    if (!safeCompareTokens(expectedToken, providedToken)) {
-        return response.status(401).json({ ok: false, error: 'Token de administrador inválido' });
+    if (!ensureAdminSession(request)) {
+        return response.status(401).json({ ok: false, error: 'Sesión de administrador inválida o expirada.' });
     }
 
     return next();
 }
+
+const adminLoginLimiter = rateLimit({
+    windowMs: Number.parseInt(process.env.ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
+    max: Number.parseInt(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX, 10) || 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        ok: false,
+        error: 'Demasiados intentos de inicio de sesión. Intentá nuevamente en unos minutos.'
+    }
+});
 
 app.use('/api/', apiLimiter);
 app.use('/api/mp/create-preference', checkoutLimiter, requireAllowedOrigin);
@@ -2002,6 +2990,80 @@ app.get('/api/csrf-token', requireAllowedOrigin, attachCsrfSession, (req, res) =
     }
 
     return res.json({ ok: true, csrfToken: res.locals.csrfToken });
+});
+
+app.get('/admin/login', (request, response) => {
+    if (!isAdminAuthConfigured()) {
+        return response.status(503).send('Panel interno no disponible. Configurá credenciales de administrador.');
+    }
+
+    if (ensureAdminSession(request)) {
+        return response.redirect('/admin/pedidos');
+    }
+
+    response.setHeader('Cache-Control', 'no-store');
+    response.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return response.sendFile(ADMIN_LOGIN_VIEW_PATH);
+});
+
+app.post('/admin/login', adminLoginLimiter, async (request, response, next) => {
+    try {
+        if (!isAdminAuthConfigured()) {
+            return response.status(503).send('Panel interno no disponible. Configurá credenciales de administrador.');
+        }
+
+        const username = normalizeText(request.body?.usuario || request.body?.username, 120);
+        const password = String(request.body?.password || '');
+        const hasValidUsername = timingSafeEqualStrings(ADMIN_USER, username);
+        const hasValidPassword = await verifyAdminPassword(password);
+
+        if (!hasValidUsername || !hasValidPassword) {
+            return response.redirect('/admin/login?error=invalid_credentials');
+        }
+
+        return request.session.regenerate(error => {
+            if (error) {
+                return next(error);
+            }
+
+            request.session.isAdminAuthenticated = true;
+            request.session.adminUser = ADMIN_USER;
+            request.session.adminLoggedAt = new Date().toISOString();
+            return response.redirect('/admin/pedidos');
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+app.get('/admin/logout', (request, response) => {
+    if (!request.session) {
+        response.clearCookie(ADMIN_SESSION_COOKIE_NAME);
+        return response.redirect('/admin/login');
+    }
+
+    return request.session.destroy(() => {
+        response.clearCookie(ADMIN_SESSION_COOKIE_NAME);
+        return response.redirect('/admin/login');
+    });
+});
+
+app.get('/admin/pedidos', requireAdminPageAuth, (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    response.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return response.sendFile(ADMIN_PEDIDOS_VIEW_PATH);
+});
+
+app.get('/admin', (request, response) => {
+    if (ensureAdminSession(request)) {
+        return response.redirect('/admin/pedidos');
+    }
+
+    return response.redirect('/admin/login');
+});
+
+app.get('/panel-interno', (_request, response) => {
+    return response.redirect('/admin/login');
 });
 
 const blockedPrefixPaths = ['/backend/', '/scripts/', '/node_modules/', '/.github/', '/config/', '/data/', '/pages/'];
@@ -3083,10 +4145,12 @@ async function syncOrderWithMercadoPagoPayment(paymentData, source = 'unknown') 
             }
         }
 
+        await syncStoreOrderToMariaDb(paidOrder);
         await sendOrderLifecycleEmail(paidOrder, 'payment_confirmed', 'Pago confirmado por Mercado Pago.');
         return sendOrderEmailsIfReady(paidOrder, source);
     }
 
+    await syncStoreOrderToMariaDb(updated);
     return updated;
 }
 
@@ -3317,6 +4381,226 @@ app.post('/api/delivery/quote', requireAllowedOrigin, (req, res, next) => {
     }
 });
 
+async function handleCheckoutShippingSubmission(req, res, next) {
+    try {
+        const normalizedPayload = ensureCheckoutPayloadHasItems(
+            normalizeCheckoutShippingPayload(req.body),
+            req
+        );
+        const payload = parsePayloadWithSchema(
+            checkoutShippingPayloadSchema,
+            normalizedPayload,
+            'Datos de envío inválidos'
+        );
+        const pool = getMariaDbPoolOrNull();
+        if (!pool) {
+            throw createApiError('La base de datos no está disponible para guardar pedidos.', 503);
+        }
+
+        const validatedItems = buildValidatedItems(payload.cart?.items || []);
+        const subtotal = calculateItemsSubtotal(validatedItems);
+        const deliveryConfig = loadDeliveryConfig();
+        const delivery = calculateDelivery(
+            {
+                method: DELIVERY_METHODS.SHIPPING,
+                postalCode: payload.postalCode,
+                installationRequested: false
+            },
+            deliveryConfig,
+            validatedItems
+        );
+        const submittedSubtotal = Number.parseInt(payload?.cart?.subtotal, 10);
+        const submittedShipping = Number.parseInt(payload?.cart?.envio, 10);
+        const submittedInstallation = Number.parseInt(payload?.cart?.installation, 10);
+        const submittedTotal = Number.parseInt(payload?.cart?.total, 10);
+        const resolvedShipping = Number.isInteger(submittedShipping) && submittedShipping >= 0
+            ? submittedShipping
+            : delivery.shippingCost;
+        const resolvedInstallation = Number.isInteger(submittedInstallation) && submittedInstallation >= 0
+            ? submittedInstallation
+            : 0;
+        const resolvedTotalBase = subtotal + resolvedShipping + resolvedInstallation;
+        const resolvedTotal = (
+            Number.isInteger(submittedTotal)
+            && submittedTotal >= 0
+            && submittedTotal === resolvedTotalBase
+        )
+            ? submittedTotal
+            : resolvedTotalBase;
+        const hasTotalsMismatch = (
+            (Number.isInteger(submittedSubtotal) && submittedSubtotal !== subtotal)
+            || (Number.isInteger(submittedShipping) && submittedShipping !== resolvedShipping)
+            || (Number.isInteger(submittedInstallation) && submittedInstallation !== resolvedInstallation)
+            || (Number.isInteger(submittedTotal) && submittedTotal !== resolvedTotal)
+        );
+
+        if (hasTotalsMismatch && !isProduction) {
+            console.warn(
+                `[checkout] Totales enviados no coinciden. client=(${submittedSubtotal}/${submittedShipping}/${submittedInstallation}/${submittedTotal}) server=(${subtotal}/${resolvedShipping}/${resolvedInstallation}/${resolvedTotal})`
+            );
+        }
+
+        const draftOrderRefFromSession = sanitizeSingleLine(req.session?.checkoutDraftOrderRef, 40);
+        const draftOrderIdFromSession = Number.parseInt(req.session?.checkoutDraftOrderId, 10);
+        let targetDraft = null;
+
+        if (Number.isInteger(draftOrderIdFromSession) && draftOrderIdFromSession > 0) {
+            targetDraft = await findDraftPedidoByIdInMariaDb(draftOrderIdFromSession);
+        }
+        if (!targetDraft && draftOrderRefFromSession) {
+            targetDraft = await findDraftPedidoByOrderIdInMariaDb(draftOrderRefFromSession);
+        }
+
+        const targetOrderId = sanitizeSingleLine(
+            targetDraft?.order_id || draftOrderRefFromSession || generateOrderId(),
+            40
+        );
+        const draftPayload = {
+            nombre: payload.fullName,
+            email: payload.email,
+            telefono: payload.phone,
+            direccion: payload.addressLine,
+            ciudad: payload.city,
+            provincia: payload.province,
+            codigo_postal: delivery.postalCode,
+            subtotal,
+            envio: resolvedShipping,
+            instalacion: resolvedInstallation,
+            total: resolvedTotal,
+            order_id: targetOrderId,
+            external_reference: targetDraft?.external_reference || null,
+            estado: 'draft'
+        };
+
+        let draftId = Number.parseInt(targetDraft?.id, 10);
+        let updated = false;
+        if (Number.isInteger(draftId) && draftId > 0) {
+            const affectedRows = await updateDraftPedidoInMariaDbById(draftId, draftPayload);
+            updated = affectedRows > 0;
+        } else {
+            const insertedId = await insertDraftPedidoInMariaDb(draftPayload);
+            draftId = Number.parseInt(insertedId, 10);
+        }
+
+        if (!Number.isInteger(draftId) || draftId < 1) {
+            throw createApiError('No pudimos guardar el pedido. Intentá nuevamente.', 500);
+        }
+
+        req.session.checkoutDraftOrderId = draftId;
+        req.session.checkoutDraftOrderRef = targetOrderId;
+
+        console.info(
+            `[checkout] Pedido draft ${updated ? 'actualizado' : 'creado'} id=${draftId} order_id=${targetOrderId} email=${sanitizeEmail(payload.email)}`
+        );
+
+        const redirectTo = `/confirmacion?orderId=${encodeURIComponent(targetOrderId)}`;
+        if (isHtmlCheckoutShippingSubmission(req)) {
+            return res.redirect(303, redirectTo);
+        }
+
+        return res.status(200).json({
+            ok: true,
+            id: draftId,
+            pedidoId: draftId,
+            orderId: targetOrderId,
+            order_id: targetOrderId,
+            totals: {
+                subtotal,
+                envio: resolvedShipping,
+                installation: resolvedInstallation,
+                total: resolvedTotal
+            },
+            shippingLabel: delivery.shippingLabel,
+            redirectTo
+        });
+    } catch (error) {
+        if ((error.status || 500) < 500) {
+            console.info(`[checkout] Validación envío rechazada: ${error.message}`);
+        }
+        if (isHtmlCheckoutShippingSubmission(req) && (error.status || 500) < 500) {
+            const message = encodeURIComponent(String(error.message || 'No pudimos guardar el pedido.'));
+            return res.redirect(303, `/datos-envio?error=${message}`);
+        }
+        return next(error);
+    }
+}
+
+app.post('/api/checkout/shipping', requireAllowedOrigin, handleCheckoutShippingSubmission);
+
+app.post('/api/pedidos', requireAllowedOrigin, async (req, res, next) => {
+    // Compatibilidad con clientes legacy: mapea payload anterior al nuevo endpoint de checkout.
+    if (req.body && !req.body.cart) {
+        req.body = {
+            fullName: req.body.nombre,
+            email: req.body.email,
+            phone: req.body.telefono,
+            addressLine: req.body.direccion,
+            city: req.body.ciudad,
+            province: req.body.provincia,
+            postalCode: req.body.codigo_postal,
+            cart: {
+                items: req.body.items,
+                subtotal: req.body.subtotal,
+                envio: req.body.envio,
+                installation: req.body.installation,
+                total: req.body.total
+            }
+        };
+    }
+
+    return handleCheckoutShippingSubmission(req, res, next);
+});
+
+async function handleCheckoutSummaryRequest(req, res, next) {
+    try {
+        const pool = getMariaDbPoolOrNull();
+        if (!pool) {
+            throw createApiError('La base de datos no está disponible para consultar pedidos.', 503);
+        }
+
+        const queryOrderId = sanitizeSingleLine(req.query?.orderId || req.query?.order_id, 40);
+        const sessionOrderId = sanitizeSingleLine(req.session?.checkoutDraftOrderRef, 40);
+        const requestedOrderId = queryOrderId || sessionOrderId;
+        if (!requestedOrderId) {
+            return res.status(400).json({
+                ok: false,
+                error: 'No encontramos un pedido en progreso. Completá primero el paso de envío.',
+                redirectTo: '/datos-envio'
+            });
+        }
+
+        const pedido = await findDraftPedidoByOrderIdInMariaDb(requestedOrderId);
+        if (!pedido) {
+            return res.status(404).json({
+                ok: false,
+                error: 'El pedido indicado no existe o expiró.',
+                redirectTo: '/datos-envio'
+            });
+        }
+        if (String(pedido.estado || '').toLowerCase() !== 'draft') {
+            return res.status(409).json({
+                ok: false,
+                error: 'El pedido ya no está en estado borrador. Iniciá una nueva compra.',
+                redirectTo: '/datos-envio'
+            });
+        }
+
+        req.session.checkoutDraftOrderId = Number.parseInt(pedido.id, 10) || req.session.checkoutDraftOrderId;
+        req.session.checkoutDraftOrderRef = sanitizeSingleLine(pedido.order_id, 40) || requestedOrderId;
+        const summary = mapDraftPedidoToCheckoutSummary(pedido, buildShippingLabelFromPostalCode(pedido.codigo_postal));
+
+        return res.json({
+            ok: true,
+            pedido: summary
+        });
+    } catch (error) {
+        return next(error);
+    }
+}
+
+app.get('/api/checkout/confirmacion', requireAllowedOrigin, handleCheckoutSummaryRequest);
+app.get('/api/checkout/summary', requireAllowedOrigin, handleCheckoutSummaryRequest);
+
 app.post('/api/mp/create-preference', async (req, res, next) => {
     try {
         const checkoutPayload = parsePayloadWithSchema(
@@ -3324,17 +4608,78 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
             req.body,
             'Datos de checkout inválidos'
         );
+        const draftOrderIdFromPayload = Number.parseInt(checkoutPayload.draftOrderId, 10);
+        const providedOrderId = sanitizeSingleLine(checkoutPayload.orderId || req.session?.checkoutDraftOrderRef, 40);
         const paymentMethod = normalizePaymentMethod(checkoutPayload.paymentMethod);
         if (!AVAILABLE_PAYMENT_METHODS.has(paymentMethod)) {
             throw createApiError('Medio de pago no habilitado para Tienda', 400);
         }
 
+        const pool = getMariaDbPoolOrNull();
+        if (!pool) {
+            throw createApiError(
+                'Checkout deshabilitado temporalmente: falta configuración/conexión de base de datos.',
+                503
+            );
+        }
+
+        let draftPedido = null;
+        if (providedOrderId) {
+            draftPedido = await findDraftPedidoByOrderIdInMariaDb(providedOrderId);
+        }
+        if (!draftPedido && Number.isInteger(draftOrderIdFromPayload) && draftOrderIdFromPayload > 0) {
+            draftPedido = await findDraftPedidoByIdInMariaDb(draftOrderIdFromPayload);
+        }
+        if (!draftPedido) {
+            throw createApiError('No encontramos un pedido draft válido. Volvé al paso de envío.', 404);
+        }
+        if (String(draftPedido.estado || '').toLowerCase() !== 'draft') {
+            throw createApiError('Este pedido ya no está en estado draft. Revisá el estado de tu compra.', 409);
+        }
+        const resolvedDraftOrderId = Number.parseInt(draftPedido.id, 10);
+
         const validatedItems = buildValidatedItems(checkoutPayload.items);
         ensureStoreStockAvailability(validatedItems);
-        const subtotal = calculateItemsSubtotal(validatedItems);
+        let subtotal = calculateItemsSubtotal(validatedItems);
         const deliveryConfig = loadDeliveryConfig();
-        const delivery = calculateDelivery(checkoutPayload.delivery, deliveryConfig, validatedItems);
-        const parsedCustomerData = parseCheckoutCustomerData(checkoutPayload);
+        let delivery = calculateDelivery(checkoutPayload.delivery, deliveryConfig, validatedItems);
+        let parsedCustomerData = parseCheckoutCustomerData(checkoutPayload);
+
+        parsedCustomerData = buildCustomerDataFromDraftPedido(draftPedido);
+        if (!parsedCustomerData.ok) {
+            throw createApiError(parsedCustomerData.reason || 'El pedido draft es inválido.', 400);
+        }
+
+        const draftPostalCode = normalizePostalCode(draftPedido.codigo_postal);
+        delivery = calculateDelivery(
+            {
+                method: DELIVERY_METHODS.SHIPPING,
+                postalCode: draftPostalCode,
+                installationRequested: false
+            },
+            deliveryConfig,
+            validatedItems
+        );
+        const draftSubtotal = Math.round(Number(draftPedido.subtotal) || 0);
+        const draftShipping = Math.round(Number(draftPedido.envio) || 0);
+        const draftTotal = Math.round(Number(draftPedido.total) || 0);
+        if (draftSubtotal > 0) {
+            subtotal = draftSubtotal;
+        }
+        if (draftShipping >= 0) {
+            delivery = {
+                ...delivery,
+                shippingCost: draftShipping
+            };
+        }
+        if (draftTotal >= 0 && draftTotal !== (subtotal + delivery.shippingCost + delivery.installationCost)) {
+            if (!isProduction) {
+                console.warn(
+                    `[checkout] Total draft ajustado desde DB order_id=${draftPedido.order_id} (db=${draftTotal} calc=${subtotal + delivery.shippingCost + delivery.installationCost})`
+                );
+            }
+        }
+
         if (!parsedCustomerData.ok) {
             const reason = Array.isArray(parsedCustomerData.missingFields) && parsedCustomerData.missingFields.length > 0
                 ? `faltan: ${parsedCustomerData.missingFields.join(', ')}`
@@ -3355,9 +4700,14 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
         }
 
         const totalAmount = subtotal + delivery.shippingCost + delivery.installationCost;
-        const orderId = generateOrderId();
-        const externalReference = generateExternalReference();
+        const orderId = sanitizeSingleLine(draftPedido.order_id, 40) || providedOrderId || generateOrderId();
+        const externalReference = sanitizeSingleLine(draftPedido.external_reference, 60) || generateExternalReference();
         const estimatedLeadTime = inferOrderLeadTime(validatedItems);
+
+        req.session.checkoutDraftOrderRef = orderId;
+        if (Number.isInteger(resolvedDraftOrderId) && resolvedDraftOrderId > 0) {
+            req.session.checkoutDraftOrderId = resolvedDraftOrderId;
+        }
 
         if ((paymentMethod === PAYMENT_METHODS.BANK_TRANSFER || paymentMethod === PAYMENT_METHODS.CASH_PICKUP) && !buyerEmail) {
             throw createApiError('Para este medio de pago necesitamos un email válido para enviarte el resumen del pedido.', 400);
@@ -3447,6 +4797,7 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
 
         if (paymentMethod !== PAYMENT_METHODS.MERCADOPAGO) {
             const createdOrder = createOrder(baseOrderRecord);
+            await syncStoreOrderToMariaDb(createdOrder, { draftOrderId: resolvedDraftOrderId || draftOrderIdFromPayload });
             const eventKey = paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
                 ? 'transfer_pending'
                 : 'cash_pickup_pending';
@@ -3551,7 +4902,7 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
             console.warn('⚠️ Mercado Pago inaccesible. Se habilitó fallback offline para entorno actual.');
         }
 
-        createOrder({
+        const createdOrder = createOrder({
             ...baseOrderRecord,
             preferenceId: response.id,
             paymentMethod: PAYMENT_METHODS.MERCADOPAGO,
@@ -3582,6 +4933,7 @@ app.post('/api/mp/create-preference', async (req, res, next) => {
                 paymentStatus: isOfflineFallback ? 'unavailable' : 'pending'
             }
         });
+        await syncStoreOrderToMariaDb(createdOrder, { draftOrderId: resolvedDraftOrderId || draftOrderIdFromPayload });
 
         if (!isOfflineFallback) {
             console.log(`✅ Preferencia creada: ${response.id} (orderRef=${externalReference})`);
@@ -4397,6 +5749,62 @@ function mapQuoteForAdmin(quote) {
     return buildPublicQuotePayload(quote);
 }
 
+function mapStoreOrderToDraftPedidoFallback(order) {
+    const customer = order.customerData || {};
+    const delivery = order.delivery || {};
+    const totals = order.totals || {};
+    return {
+        id: null,
+        nombre: sanitizeSingleLine(customer.fullName, 100),
+        email: sanitizeEmail(customer.email || order.buyerEmail),
+        telefono: sanitizeSingleLine(customer.phone, 20),
+        direccion: sanitizeSingleLine(customer.addressLine || customer.address, 150),
+        ciudad: sanitizeSingleLine(customer.city, 50),
+        provincia: sanitizeSingleLine(customer.province, 50),
+        codigo_postal: sanitizeSingleLine(customer.postalCode || delivery.postalCode, 10),
+        subtotal: normalizeMoneyAmount(totals.subtotal),
+        envio: normalizeMoneyAmount(totals.shipping),
+        instalacion: normalizeMoneyAmount(totals.installation),
+        total: normalizeMoneyAmount(totals.total),
+        order_id: sanitizeSingleLine(order.orderId, 40),
+        external_reference: sanitizeSingleLine(order.externalReference, 60),
+        estado: sanitizeSingleLine(order.fulfillmentStatus || order.checkoutStatus, 40) || 'draft',
+        fecha_creado: order.createdAt || null,
+        fecha_actualizado: order.updatedAt || order.createdAt || null
+    };
+}
+
+app.get('/api/admin/pedidos', requireAllowedOrigin, requireAdminAuth, async (req, res, next) => {
+    try {
+        const limit = Math.min(1000, Math.max(1, Number.parseInt(req.query?.limit, 10) || 250));
+        const dbPool = getMariaDbPoolOrNull();
+
+        if (dbPool) {
+            const pedidos = await listDraftPedidosFromMariaDb(limit);
+            return res.json({
+                ok: true,
+                source: 'mariadb',
+                pedidos
+            });
+        }
+
+        const fallbackOrders = readOrdersStore().orders
+            .filter(order => normalizeText(order.orderType, 20).toLowerCase() === ORDER_TYPE_STORE)
+            .slice()
+            .sort(sortByRecent)
+            .slice(0, limit)
+            .map(mapStoreOrderToDraftPedidoFallback);
+        return res.json({
+            ok: true,
+            source: 'json_fallback',
+            warning: 'MariaDB no está configurada. Mostrando pedidos desde almacenamiento local.',
+            pedidos: fallbackOrders
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
 app.get('/api/admin/overview', requireAllowedOrigin, requireAdminAuth, (req, res) => {
     const limit = Math.min(300, Math.max(1, Number.parseInt(req.query?.limit, 10) || 120));
     const orders = readOrdersStore().orders
@@ -4512,6 +5920,12 @@ app.patch('/api/admin/orders/:orderId/status', requireAllowedOrigin, requireAdmi
                     updatedOrder = releasedOrder;
                 }
             }
+        }
+
+        try {
+            await updatePedidoStatusInMariaDb(updatedOrder.orderId, nextStatus);
+        } catch (databaseError) {
+            console.error(`❌ No se pudo sincronizar estado en MariaDB para ${updatedOrder.orderId}: ${databaseError.message}`);
         }
 
         if (previousStatus !== nextStatus) {
@@ -5013,19 +6427,47 @@ app.use((error, req, res, _next) => {
     return res.status(status).json(payload);
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
-    console.log(`🌐 API URL esperada: ${API_URL}`);
-    console.log(`🧩 Frontend estático: ${hasFrontendStaticBundle ? FRONTEND_ROOT_PATH : 'deshabilitado (modo API-only)'}`);
-    console.log(`💳 Mercado Pago: ${hasMercadoPagoAccessToken ? 'configurado' : 'deshabilitado (falta MP_ACCESS_TOKEN)'}`);
-    console.log(`🛡️ CORS permitido para: ${Array.from(allowedOrigins).join(', ')} (+ netlify previews por regex)`);
-    console.log(`🔔 Webhook MP: ${MP_NOTIFICATION_URL || '(no configurado)'}`);
-    console.log(`📧 SMTP emails: ${isEmailNotificationConfigured() ? 'activo' : 'no configurado'}`);
-});
+let server = null;
 
-server.requestTimeout = Number.parseInt(process.env.REQUEST_TIMEOUT_MS, 10) || 15000;
-server.headersTimeout = Number.parseInt(process.env.HEADERS_TIMEOUT_MS, 10) || 20000;
-server.keepAliveTimeout = Number.parseInt(process.env.KEEP_ALIVE_TIMEOUT_MS, 10) || 5000;
+async function startServer() {
+    await initializeMariaDb();
+
+    server = app.listen(PORT, '0.0.0.0', () => {
+        const missingAdminKeys = getMissingAdminEnvKeys();
+        const missingCheckoutKeys = getMissingCheckoutEnvKeys();
+        const hasValidAdminHash = Boolean(parseAdminPasswordHash(ADMIN_PASSWORD_HASH));
+        console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+        console.log(`🌐 API URL esperada: ${API_URL}`);
+        console.log(`🧩 Frontend estático: ${hasFrontendStaticBundle ? FRONTEND_ROOT_PATH : 'deshabilitado (modo API-only)'}`);
+        console.log(`💳 Mercado Pago: ${hasMercadoPagoAccessToken ? 'configurado' : 'deshabilitado (falta MP_ACCESS_TOKEN)'}`);
+        console.log(`🛡️ CORS permitido para: ${Array.from(allowedOrigins).join(', ')} (+ netlify previews por regex)`);
+        console.log(`🔔 Webhook MP: ${MP_NOTIFICATION_URL || '(no configurado)'}`);
+        console.log(`📧 SMTP emails: ${isEmailNotificationConfigured() ? 'activo' : 'no configurado'}`);
+        console.log(`👤 Admin auth: ${isAdminAuthConfigured() ? 'configurado' : 'deshabilitado (falta ADMIN_USER/ADMIN_PASSWORD_HASH/SESSION_SECRET)'}`);
+        console.log(`🗄️ MariaDB pedidos: ${mariaDbEnabled ? 'activa' : 'deshabilitada'}`);
+        if (missingAdminKeys.length > 0) {
+            console.warn(`⚠️ Variables faltantes para admin: ${missingAdminKeys.join(', ')}`);
+        }
+        if (ADMIN_PASSWORD_HASH && !hasValidAdminHash) {
+            console.warn('⚠️ ADMIN_PASSWORD_HASH inválido. Usá formato scrypt$N$r$p$saltHex$hashHex.');
+        }
+        if (missingCheckoutKeys.length > 0) {
+            console.warn(`⚠️ Variables faltantes para checkout con DB: ${missingCheckoutKeys.join(', ')}`);
+        }
+        if (!hasMercadoPagoAccessToken) {
+            console.warn('⚠️ Variable faltante para pagos MP: MP_ACCESS_TOKEN');
+        }
+    });
+
+    server.requestTimeout = Number.parseInt(process.env.REQUEST_TIMEOUT_MS, 10) || 15000;
+    server.headersTimeout = Number.parseInt(process.env.HEADERS_TIMEOUT_MS, 10) || 20000;
+    server.keepAliveTimeout = Number.parseInt(process.env.KEEP_ALIVE_TIMEOUT_MS, 10) || 5000;
+}
+
+startServer().catch(error => {
+    console.error(`❌ No se pudo iniciar el servidor: ${error.message}`);
+    process.exit(1);
+});
 
 process.on('unhandledRejection', (reason) => {
     console.error('❌ Unhandled Promise Rejection:', reason);

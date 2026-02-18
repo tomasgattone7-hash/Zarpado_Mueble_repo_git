@@ -759,6 +759,288 @@
         "paymentStatus": "pending"
       },
       "preferenceId": "3202898734-4f2725bd-0818-49c2-bc36-f6e817b9bab9"
+    },
+    {
+      "orderId": "ZM-1771437708061-4FB9B5",
+      "externalReference": "ORDER_1771437717664_1CD523",
+      "orderType": "tienda",
+      "createdAt": "2026-02-18T18:01:57.666Z",
+      "updatedAt": "2026-02-18T18:01:57.666Z",
+      "paymentMethod": "mercadopago",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "fulfillmentStatus": "pending_payment",
+      "estimatedLeadTime": "Fabricación bajo pedido: entrega estimada entre 10 y 20 días hábiles.",
+      "stockReserved": false,
+      "timeline": [
+        {
+          "status": "pending_payment",
+          "label": "Pendiente de pago",
+          "note": "Pedido registrado en Mercado Pago",
+          "at": "2026-02-18T18:01:58.611Z"
+        }
+      ],
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nordico",
+          "description": "Modulo de guardado para cocina/comedor",
+          "quantity": 1,
+          "unit_price": 230000,
+          "fulfillmentModel": "made_to_order",
+          "category": "Cocinas",
+          "weightKg": 52,
+          "volumeM3": 0.41
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior (hasta 120 kg)",
+        "shippingCost": 120000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0,
+        "shippingMeta": {
+          "freightTier": "hasta 120 kg",
+          "chargeableWeightKg": 102.5,
+          "totalWeightKg": 52,
+          "totalVolumeM3": 0.41
+        }
+      },
+      "totals": {
+        "subtotal": 230000,
+        "shipping": 120000,
+        "installation": 0,
+        "total": 350000
+      },
+      "buyerEmail": "tomasabalero@hotmail.com",
+      "customerData": {
+        "fullName": "tomas",
+        "phone": "1127474780",
+        "email": "tomasabalero@hotmail.com",
+        "documentId": "",
+        "street": "mitre",
+        "streetNumber": "1532",
+        "city": "coronda",
+        "province": "santa fe",
+        "postalCode": "2240",
+        "floorApartment": "",
+        "neighborhood": "",
+        "addressReference": "",
+        "receiverType": "yo",
+        "receiverName": "tomas",
+        "availableSchedule": "",
+        "additionalNotes": ""
+      },
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-6457c44b-c13d-4f9a-a8ca-4e41a18bdf03",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771437717664_1CD523"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-6457c44b-c13d-4f9a-a8ca-4e41a18bdf03",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      },
+      "preferenceId": "3202898734-6457c44b-c13d-4f9a-a8ca-4e41a18bdf03"
+    },
+    {
+      "orderId": "ZM-1771438754692-3B8798",
+      "externalReference": "ORDER_1771438761965_B26D76",
+      "orderType": "tienda",
+      "createdAt": "2026-02-18T18:19:21.966Z",
+      "updatedAt": "2026-02-18T18:19:21.966Z",
+      "paymentMethod": "mercadopago",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "fulfillmentStatus": "pending_payment",
+      "estimatedLeadTime": "Fabricación bajo pedido: entrega estimada entre 10 y 20 días hábiles.",
+      "stockReserved": false,
+      "timeline": [
+        {
+          "status": "pending_payment",
+          "label": "Pendiente de pago",
+          "note": "Pedido registrado en Mercado Pago",
+          "at": "2026-02-18T18:19:22.946Z"
+        }
+      ],
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nordico",
+          "description": "Modulo de guardado para cocina/comedor",
+          "quantity": 1,
+          "unit_price": 230000,
+          "fulfillmentModel": "made_to_order",
+          "category": "Cocinas",
+          "weightKg": 52,
+          "volumeM3": 0.41
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior (hasta 120 kg)",
+        "shippingCost": 35000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0,
+        "shippingMeta": {
+          "freightTier": "hasta 120 kg",
+          "chargeableWeightKg": 102.5,
+          "totalWeightKg": 52,
+          "totalVolumeM3": 0.41
+        }
+      },
+      "totals": {
+        "subtotal": 230000,
+        "shipping": 35000,
+        "installation": 0,
+        "total": 265000
+      },
+      "buyerEmail": "tomasabalero@hotmail.com",
+      "customerData": {
+        "fullName": "tomas",
+        "phone": "1127474780",
+        "email": "tomasabalero@hotmail.com",
+        "documentId": "",
+        "street": "mitre",
+        "streetNumber": "1532",
+        "city": "coronda",
+        "province": "santa fe",
+        "postalCode": "2240",
+        "floorApartment": "",
+        "neighborhood": "",
+        "addressReference": "",
+        "receiverType": "yo",
+        "receiverName": "tomas",
+        "availableSchedule": "",
+        "additionalNotes": ""
+      },
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-3070b642-ed46-4f99-a55e-982bfeddbb55",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771438761965_B26D76"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-3070b642-ed46-4f99-a55e-982bfeddbb55",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      },
+      "preferenceId": "3202898734-3070b642-ed46-4f99-a55e-982bfeddbb55"
+    },
+    {
+      "orderId": "ZM-1771439241194-9F32DC",
+      "externalReference": "ORDER_1771439280373_3665AF",
+      "orderType": "tienda",
+      "createdAt": "2026-02-18T18:28:00.373Z",
+      "updatedAt": "2026-02-18T18:28:00.373Z",
+      "paymentMethod": "mercadopago",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "fulfillmentStatus": "pending_payment",
+      "estimatedLeadTime": "Productos en stock: envío estimado en 48/72 hs hábiles.",
+      "stockReserved": false,
+      "timeline": [
+        {
+          "status": "pending_payment",
+          "label": "Pendiente de pago",
+          "note": "Pedido registrado en Mercado Pago",
+          "at": "2026-02-18T18:28:01.200Z"
+        }
+      ],
+      "items": [
+        {
+          "id": "3",
+          "title": "Mesa Ratona Industrial",
+          "description": "Estructura de hierro y tapa paraiso",
+          "quantity": 1,
+          "unit_price": 95000,
+          "fulfillmentModel": "stock",
+          "category": "Living",
+          "weightKg": 18,
+          "volumeM3": 0.18
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior (hasta 80 kg)",
+        "shippingCost": 35000,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0,
+        "shippingMeta": {
+          "freightTier": "hasta 80 kg",
+          "chargeableWeightKg": 45,
+          "totalWeightKg": 18,
+          "totalVolumeM3": 0.18
+        }
+      },
+      "totals": {
+        "subtotal": 95000,
+        "shipping": 35000,
+        "installation": 0,
+        "total": 130000
+      },
+      "buyerEmail": "fgairnet@hotmail.com",
+      "customerData": {
+        "fullName": "tomas",
+        "phone": "1127474780",
+        "email": "fgairnet@hotmail.com",
+        "documentId": "",
+        "street": "mitre",
+        "streetNumber": "1532",
+        "city": "coronda",
+        "province": "santa fe",
+        "postalCode": "2240",
+        "floorApartment": "",
+        "neighborhood": "",
+        "addressReference": "",
+        "receiverType": "yo",
+        "receiverName": "tomas",
+        "availableSchedule": "",
+        "additionalNotes": ""
+      },
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-86d9e5e5-f122-43d5-a4a2-db13889bc108",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771439280373_3665AF"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-86d9e5e5-f122-43d5-a4a2-db13889bc108",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      },
+      "preferenceId": "3202898734-86d9e5e5-f122-43d5-a4a2-db13889bc108"
     }
   ]
 }

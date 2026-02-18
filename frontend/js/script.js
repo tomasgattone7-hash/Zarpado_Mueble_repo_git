@@ -59,6 +59,8 @@ function closeCart() {
 const THEME_STORAGE_KEY = 'zm_theme';
 const LIGHT_THEME = 'light';
 const DARK_THEME = 'dark';
+const CHECKOUT_CART_COOKIE_NAME = 'zm_cart';
+const CHECKOUT_CART_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const THEME_MEDIA_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
 const DEFAULT_PROD_API_BASE_URL = 'https://api.zarpadomueble.com';
 const DEFAULT_LOCAL_API_BASE_URL = 'http://localhost:3000';
@@ -849,28 +851,24 @@ function initContactFormSubmission() {
         if (fullName.length < 2) {
             event.preventDefault();
             setContactSubmitInfo('Ingresá tu nombre y apellido.', 'error');
-            alert('Revisá el formulario antes de enviar.');
             return;
         }
 
         if (!isValidEmailAddress(email)) {
             event.preventDefault();
             setContactSubmitInfo('Ingresá un email válido.', 'error');
-            alert('Revisá el formulario antes de enviar.');
             return;
         }
 
         if (!inquiryType) {
             event.preventDefault();
             setContactSubmitInfo('Seleccioná el tipo de consulta.', 'error');
-            alert('Revisá el formulario antes de enviar.');
             return;
         }
 
         if (message.length < 10) {
             event.preventDefault();
             setContactSubmitInfo('El mensaje debe tener al menos 10 caracteres.', 'error');
-            alert('Revisá el formulario antes de enviar.');
             return;
         }
 
@@ -905,7 +903,6 @@ function initContactFormSubmission() {
                 setContactSubmitInfo('Consulta enviada con exito.', 'success');
                 setContactSubmittingState(false, true);
                 submitSucceeded = true;
-                alert('¡Mensaje enviado! Te responderemos pronto.');
                 return;
             }
 
@@ -935,7 +932,6 @@ function initContactFormSubmission() {
                 setContactSubmitInfo('Consulta enviada con exito.', 'success');
                 setContactSubmittingState(false, true);
                 submitSucceeded = true;
-                alert('¡Mensaje enviado! Te responderemos pronto.');
                 return;
             }
 
@@ -948,7 +944,6 @@ function initContactFormSubmission() {
                 ? fallbackMessage
                 : (error?.message || fallbackMessage);
             setContactSubmitInfo(message, 'error');
-            alert('Ocurrió un error al enviar. Intenta de nuevo.');
         } finally {
             isSubmitting = false;
             if (!submitSucceeded) {
@@ -1416,10 +1411,40 @@ function loadStoredCart() {
 }
 
 function persistCart(rawCart) {
+    const sanitizedCart = sanitizeCart(rawCart);
+
     try {
-        localStorage.setItem('zarpadoCart', JSON.stringify(rawCart));
+        localStorage.setItem('zarpadoCart', JSON.stringify(sanitizedCart));
     } catch (error) {
         // Storage can be blocked (private mode / strict settings).
+    }
+
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    try {
+        if (sanitizedCart.length === 0) {
+            document.cookie = `${CHECKOUT_CART_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
+            return;
+        }
+
+        const compactItems = sanitizedCart.map(item => ({
+            id: Number.parseInt(item.id, 10),
+            quantity: Number.parseInt(item.quantity, 10)
+        }));
+        const cookieParts = [
+            `${CHECKOUT_CART_COOKIE_NAME}=${encodeURIComponent(JSON.stringify(compactItems))}`,
+            'Path=/',
+            `Max-Age=${CHECKOUT_CART_COOKIE_MAX_AGE_SECONDS}`,
+            'SameSite=Lax'
+        ];
+        if (window.location.protocol === 'https:') {
+            cookieParts.push('Secure');
+        }
+        document.cookie = cookieParts.join('; ');
+    } catch (error) {
+        // Ignore cookie serialization errors.
     }
 }
 
@@ -1776,6 +1801,7 @@ function formatArs(amount) {
 
 const DELIVERY_METHOD_SHIPPING = 'shipping';
 const DELIVERY_METHOD_PICKUP = 'pickup';
+const CHECKOUT_STATE_STORAGE_KEY = 'checkoutState';
 const PAYMENT_METHOD_MERCADOPAGO = 'mercadopago';
 const PAYMENT_METHOD_BANK_TRANSFER = 'bank_transfer';
 const PAYMENT_METHOD_CASH_PICKUP = 'cash_pickup';
@@ -1793,7 +1819,47 @@ const DEFAULT_DELIVERY_CONFIG = Object.freeze({
     installationZoneLabel: 'Buenos Aires (zonas seleccionadas)'
 });
 
+function persistCheckoutState(state) {
+    const normalizedState = state && typeof state === 'object' ? state : {};
+    const payload = {
+        items: Array.isArray(normalizedState.items)
+            ? normalizedState.items
+                .map(item => ({
+                    id: Number.parseInt(item?.id, 10),
+                    name: String(item?.name || '').trim(),
+                    price: Number.parseInt(item?.price, 10) || 0,
+                    quantity: Number.parseInt(item?.quantity, 10) || 0,
+                    image: String(item?.image || '').trim()
+                }))
+                .filter(item => Number.isInteger(item.id) && item.id > 0 && item.quantity > 0)
+            : [],
+        totals: {
+            subtotal: Number.parseInt(normalizedState?.totals?.subtotal, 10) || 0,
+            envio: Number.parseInt(normalizedState?.totals?.envio, 10) || 0,
+            installation: Number.parseInt(normalizedState?.totals?.installation, 10) || 0,
+            total: Number.parseInt(normalizedState?.totals?.total, 10) || 0
+        },
+        delivery: {
+            method: String(normalizedState?.delivery?.method || DELIVERY_METHOD_SHIPPING),
+            postalCode: String(normalizedState?.delivery?.postalCode || '').replace(/\D/g, '').slice(0, 4),
+            shippingLabel: String(normalizedState?.delivery?.shippingLabel || ''),
+            shippingReady: Boolean(normalizedState?.delivery?.shippingReady)
+        },
+        paymentMethod: String(normalizedState?.paymentMethod || PAYMENT_METHOD_MERCADOPAGO),
+        buyerEmail: String(normalizedState?.buyerEmail || '').trim(),
+        savedAt: new Date().toISOString()
+    };
+
+    try {
+        localStorage.setItem(CHECKOUT_STATE_STORAGE_KEY, JSON.stringify(payload));
+        sessionStorage.setItem(CHECKOUT_STATE_STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+        // Storage can be blocked (private mode / strict settings).
+    }
+}
+
 let cart = loadStoredCart();
+persistCart(cart);
 const cartItemsContainer = document.getElementById('cartItems');
 const cartTotalElement = document.getElementById('cartTotal');
 const cartCountElement = document.querySelector('.cart-count');
@@ -2601,6 +2667,25 @@ async function checkout(currentEvent = null) {
             return;
         }
 
+        const breakdown = getCostBreakdown();
+        persistCheckoutState({
+            items: cart,
+            totals: {
+                subtotal: breakdown.subtotal,
+                envio: breakdown.shipping,
+                installation: breakdown.installation,
+                total: breakdown.total
+            },
+            delivery: {
+                method: deliveryState.method,
+                postalCode: deliveryState.postalCode,
+                shippingLabel: deliveryState.shippingLabel,
+                shippingReady: deliveryState.shippingReady
+            },
+            paymentMethod: deliveryState.paymentMethod,
+            buyerEmail: deliveryState.buyerEmail
+        });
+
         const runtimeEvent = currentEvent || (typeof event !== 'undefined' ? event : null);
         checkoutButton = runtimeEvent?.target || document.querySelector('.cart-footer .btn.btn-primary');
         originalText = checkoutButton?.textContent || '';
@@ -2930,4 +3015,3 @@ function openQuote(productName) {
     const safeProductName = String(productName || '').slice(0, 120);
     window.location.href = `/contacto?producto=${encodeURIComponent(safeProductName)}`;
 }
-
