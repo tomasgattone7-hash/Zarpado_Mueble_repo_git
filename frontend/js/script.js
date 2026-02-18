@@ -1466,13 +1466,31 @@ function normalizeCatalogSearchTerm(value) {
     return String(value || '').trim().toLowerCase();
 }
 
+function normalizeCatalogFilterToken(value) {
+    const normalizedValue = String(value || '').trim().toLowerCase();
+    if (!normalizedValue) {
+        return '';
+    }
+
+    return normalizedValue
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\s_-]+/g, '')
+        .replace(/[^a-z0-9]/g, '');
+}
+
+function isAllCatalogFilterToken(value) {
+    const token = normalizeCatalogFilterToken(value);
+    return token === '' || token === 'all' || token === 'todos';
+}
+
 function getFilteredStoreProducts(filter = activeCatalogFilter, searchTerm = activeCatalogSearch) {
     const storeProducts = products.filter(product => product.action === 'cart');
-    const normalizedFilter = String(filter || 'all').trim();
+    const normalizedFilter = normalizeCatalogFilterToken(filter);
     const normalizedSearch = normalizeCatalogSearchTerm(searchTerm);
-    const categoryFilteredProducts = normalizedFilter === 'all'
+    const categoryFilteredProducts = isAllCatalogFilterToken(normalizedFilter)
         ? storeProducts
-        : storeProducts.filter(product => product.category === normalizedFilter);
+        : storeProducts.filter(product => normalizeCatalogFilterToken(product.category) === normalizedFilter);
 
     if (!normalizedSearch) {
         return categoryFilteredProducts;
@@ -1490,8 +1508,13 @@ function getFilteredStoreProducts(filter = activeCatalogFilter, searchTerm = act
 }
 
 function updateCatalogFilterButtonsState() {
+    const activeFilterKey = normalizeCatalogFilterToken(activeCatalogFilter);
     document.querySelectorAll('.js-catalog-filter').forEach(button => {
-        const isActive = button.dataset.filter === activeCatalogFilter;
+        const buttonFilterKey = normalizeCatalogFilterToken(button.dataset.filter);
+        const isActive = (
+            buttonFilterKey === activeFilterKey
+            || (isAllCatalogFilterToken(buttonFilterKey) && isAllCatalogFilterToken(activeFilterKey))
+        );
         button.classList.toggle('active', isActive);
         button.setAttribute('aria-pressed', String(isActive));
     });
@@ -1504,7 +1527,7 @@ function updateCatalogResultCounter(totalProductsCount) {
     }
 
     const suffix = totalProductsCount === 1 ? 'producto' : 'productos';
-    const selectedCategory = activeCatalogFilter === 'all' ? 'todas las categorias' : activeCatalogFilter;
+    const selectedCategory = isAllCatalogFilterToken(activeCatalogFilter) ? 'todas las categorias' : activeCatalogFilter;
     const searchHint = activeCatalogSearch
         ? ` y busqueda "${activeCatalogSearch}"`
         : '';
@@ -1611,13 +1634,16 @@ function initCatalogFilters() {
     const urlParams = new URLSearchParams(window.location.search);
     const categoryFromQuery = String(urlParams.get('categoria') || '').trim();
     if (categoryFromQuery) {
-        const normalizedCategory = categoryFromQuery.toLowerCase();
-        const matchingButton = Array.from(filterButtons).find(button => (
-            String(button.dataset.filter || '').toLowerCase() === normalizedCategory
-        ));
-
-        if (matchingButton) {
-            activeCatalogFilter = String(matchingButton.dataset.filter);
+        const normalizedCategory = normalizeCatalogFilterToken(categoryFromQuery);
+        if (isAllCatalogFilterToken(normalizedCategory)) {
+            activeCatalogFilter = 'all';
+        } else {
+            const matchingButton = Array.from(filterButtons).find(button => (
+                normalizeCatalogFilterToken(button.dataset.filter) === normalizedCategory
+            ));
+            if (matchingButton) {
+                activeCatalogFilter = String(matchingButton.dataset.filter);
+            }
         }
     }
 

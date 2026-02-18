@@ -19,6 +19,14 @@
     --color-on-accent: #ffffff;
     --font-heading: 'Playfair Display', serif;
     --font-body: 'Lato', sans-serif;
+    --text-base: 16px;
+    --text-sm: 15px;
+    --text-xs: 14px;
+    --line-base: 1.72;
+    --line-sm: 1.62;
+    --line-relaxed: 1.78;
+    --tracking-base: 0.012em;
+    --tracking-wide: 0.04em;
     --transition-slow: 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
     --transition-base: 0.4s ease;
     --spacing-section: 120px;
@@ -31,7 +39,7 @@
     --color-bg-secondary: #1e1e1e;
     --color-bg-tertiary: #252525;
     --color-text: #e0e0e0;
-    --color-text-muted: #a0a0a0;
+    --color-text-muted: #b6b6b6;
     --color-heading: #ffffff;
     --color-accent: #8d6e63;
     --color-accent-hover: #a1887f;
@@ -62,7 +70,8 @@ body {
     font-family: var(--font-body);
     background-color: var(--color-bg);
     color: var(--color-text);
-    line-height: 1.7;
+    line-height: var(--line-base);
+    letter-spacing: var(--tracking-base);
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
 }
@@ -744,6 +753,90 @@ img {
     gap: 0.7rem;
     justify-content: center;
     margin-bottom: 1rem;
+}
+
+.channel-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.catalog-filters .channel-card {
+    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+    background: color-mix(in srgb, var(--color-bg-secondary) 82%, transparent);
+    color: var(--color-heading);
+    border-radius: var(--border-radius);
+    min-height: 44px;
+    min-width: clamp(110px, 14vw, 142px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.72rem 1rem;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+}
+
+.catalog-filters .channel-card::before {
+    content: '';
+    position: absolute;
+    top: -130%;
+    left: -45%;
+    width: 46%;
+    height: 320%;
+    background: linear-gradient(
+        100deg,
+        transparent 0%,
+        color-mix(in srgb, #ffffff 82%, transparent) 45%,
+        transparent 100%
+    );
+    transform: rotate(18deg);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.catalog-filters .channel-card::after {
+    content: '';
+    position: absolute;
+    inset: auto 12% 8% 12%;
+    height: 8px;
+    background: color-mix(in srgb, var(--color-accent) 52%, transparent);
+    filter: blur(9px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+}
+
+.catalog-filters .channel-card:hover,
+.catalog-filters .channel-card:focus-visible {
+    transform: translateY(-4px);
+    border-color: var(--color-accent);
+    background:
+        radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 48%),
+        color-mix(in srgb, var(--color-bg-tertiary) 86%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent), 0 12px 28px color-mix(in srgb, var(--color-accent) 32%, transparent);
+}
+
+.catalog-filters .channel-card:hover::before,
+.catalog-filters .channel-card:focus-visible::before {
+    opacity: 1;
+    animation: ambientButtonSweep 1.8s linear infinite;
+}
+
+.catalog-filters .channel-card:hover::after,
+.catalog-filters .channel-card:focus-visible::after {
+    opacity: 0.78;
+}
+
+.catalog-filters .channel-card.active,
+.catalog-filters .channel-card[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--color-accent) 72%, transparent);
+    background:
+        radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--color-accent) 18%, transparent), transparent 50%),
+        color-mix(in srgb, var(--color-bg-tertiary) 88%, transparent);
+    color: var(--color-heading);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent), 0 14px 30px color-mix(in srgb, var(--color-accent) 36%, transparent);
 }
 
 .catalog-search {
@@ -1841,6 +1934,81 @@ textarea:focus-visible,
     max-width: none;
 }
 
+/* legibilidad: sistema tipografico global para textos chicos */
+p,
+li,
+label,
+small,
+.small,
+.muted {
+    font-size: var(--text-sm);
+    line-height: var(--line-relaxed);
+    letter-spacing: var(--tracking-base);
+}
+
+.feature-text,
+.product-specs,
+.product-meta,
+.catalog-filter-result,
+.catalog-noscript-note,
+.contact-submit-info,
+.required-fields-note,
+.quote-dropzone-subtitle,
+.quote-files-selected-item,
+.service-step p,
+.amedida-gallery figcaption,
+.shop-policy-card p,
+.shop-policy-card ul,
+.delivery-compact-summary,
+.delivery-config-toggle,
+.delivery-option,
+.delivery-shipping-controls label,
+.delivery-help-message,
+.delivery-payment-box label,
+.cart-breakdown-row,
+.shipping-data-note,
+.shipping-data-feedback,
+.checkout-progress-label,
+.form-error,
+.checkout-flow-feedback,
+.checkout-cart-item p,
+.checkout-summary-note,
+.checkout-total-row,
+.social-card p {
+    font-size: var(--text-sm);
+    line-height: var(--line-sm);
+    letter-spacing: var(--tracking-base);
+}
+
+.nav-link,
+.theme-toggle,
+.btn,
+.btn-nav,
+.btn-filter,
+.btn-add-cart {
+    font-size: var(--text-xs);
+}
+
+.contact-form label {
+    font-size: var(--text-sm) !important;
+    line-height: var(--line-sm);
+    letter-spacing: var(--tracking-base);
+    color: var(--color-text-muted) !important;
+}
+
+.form-input,
+.form-textarea {
+    font-size: var(--text-base);
+    line-height: var(--line-sm);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: color-mix(in srgb, var(--color-text-muted) 92%, transparent);
+    opacity: 1;
+    letter-spacing: var(--tracking-base);
+}
+
 /* --- Responsive Layout --- */
 @media (max-width: 1024px) {
     :root {
@@ -1887,6 +2055,9 @@ textarea:focus-visible,
     :root {
         --spacing-section: 76px;
         --navbar-height: 74px;
+        --text-base: 16px;
+        --text-sm: 15.5px;
+        --text-xs: 14.5px;
     }
 
     html {
@@ -1898,6 +2069,20 @@ textarea:focus-visible,
     textarea,
     button {
         font-size: 16px;
+    }
+
+    .form-input,
+    .form-textarea,
+    .contact-form label {
+        font-size: 16px !important;
+    }
+
+    .catalog-filters .channel-card,
+    .catalog-filter-result,
+    .catalog-noscript-note,
+    .required-fields-note,
+    .contact-submit-info {
+        font-size: 15px;
     }
 
     .container {
