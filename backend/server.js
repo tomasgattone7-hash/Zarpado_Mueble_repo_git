@@ -27,6 +27,43 @@ function pickEnv(...keys) {
     return '';
 }
 
+function normalizeDbHostCandidate(value) {
+    const raw = String(value || '').trim();
+    if (!raw) {
+        return '';
+    }
+
+    if (/^[a-z]+:\/\//i.test(raw)) {
+        try {
+            return new URL(raw).hostname || '';
+        } catch {
+            return '';
+        }
+    }
+
+    return raw;
+}
+
+function isRailwayInternalHost(hostname) {
+    return String(hostname || '').trim().toLowerCase().includes('railway.internal');
+}
+
+function resolvePreferredDbHost() {
+    const directCandidates = [
+        pickEnv('MYSQLHOST', 'DB_HOST', 'MARIADB_HOST', 'DATABASE_HOST'),
+        pickEnv('MYSQLHOST_INTERNAL', 'DB_HOST_INTERNAL', 'MARIADB_HOST_INTERNAL')
+    ]
+        .map(normalizeDbHostCandidate)
+        .filter(Boolean);
+
+    const internalCandidate = directCandidates.find(candidate => isRailwayInternalHost(candidate));
+    if (internalCandidate) {
+        return internalCandidate;
+    }
+
+    return directCandidates[0] || '';
+}
+
 const app = express();
 const PORT = Number.parseInt(process.env.PORT, 10) || 3000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
@@ -35,6 +72,11 @@ const API_URL = process.env.API_URL || 'https://api.zarpadomueble.com';
 const NORMALIZED_FRONTEND_URL = String(FRONTEND_URL).trim().replace(/\/+$/, '');
 const NORMALIZED_API_URL = String(API_URL).trim().replace(/\/+$/, '');
 const isProduction = process.env.NODE_ENV === 'production';
+const isRailwayRuntime = Boolean(
+    process.env.RAILWAY_ENVIRONMENT
+    || process.env.RAILWAY_PROJECT_ID
+    || process.env.RAILWAY_SERVICE_ID
+);
 const FRONTEND_ROOT_PATH = path.resolve(__dirname, '..', 'frontend');
 const FRONTEND_PAGES_PATH = path.resolve(FRONTEND_ROOT_PATH, 'pages');
 const FRONTEND_NOT_FOUND_PATH = path.resolve(FRONTEND_PAGES_PATH, '404.html');
@@ -56,17 +98,18 @@ const SESSION_SECRET = String(process.env.SESSION_SECRET || '').trim();
 const ADMIN_USER = String(process.env.ADMIN_USER || '').trim();
 const ADMIN_PASSWORD_HASH = String(process.env.ADMIN_PASSWORD_HASH || '').trim();
 const CHECKOUT_CART_COOKIE_NAME = 'zm_cart';
-const DB_HOST = pickEnv('DB_HOST', 'MYSQLHOST', 'MARIADB_HOST', 'DATABASE_HOST');
-const DB_PORT = Number.parseInt(pickEnv('DB_PORT', 'MYSQLPORT', 'MARIADB_PORT', 'DATABASE_PORT'), 10) || 3306;
-const DB_USER = pickEnv('DB_USER', 'MYSQLUSER', 'MARIADB_USER', 'DATABASE_USER');
-const DB_PASSWORD = pickEnv('DB_PASSWORD', 'MYSQLPASSWORD', 'MARIADB_PASSWORD', 'DATABASE_PASSWORD');
-const DB_NAME = pickEnv('DB_NAME', 'MYSQLDATABASE', 'MARIADB_DATABASE', 'DATABASE_NAME');
+const DB_HOST = resolvePreferredDbHost();
+const DB_PORT = Number.parseInt(pickEnv('MYSQLPORT', 'DB_PORT', 'MARIADB_PORT', 'DATABASE_PORT'), 10) || 3306;
+const DB_USER = pickEnv('MYSQLUSER', 'DB_USER', 'MARIADB_USER', 'DATABASE_USER');
+const DB_PASSWORD = pickEnv('MYSQLPASSWORD', 'DB_PASSWORD', 'MARIADB_PASSWORD', 'DATABASE_PASSWORD');
+const DB_NAME = pickEnv('MYSQLDATABASE', 'DB_NAME', 'MARIADB_DATABASE', 'DATABASE_NAME');
 const DB_CONNECTION_LIMIT = Number.parseInt(process.env.DB_CONNECTION_LIMIT, 10) || 10;
 const DB_SSL_MODE = String(process.env.DB_SSL_MODE || '').trim().toLowerCase();
 const DB_SSL_CA_PATH = String(process.env.DB_SSL_CA_PATH || '').trim();
 const DB_SSL_KEY_PATH = String(process.env.DB_SSL_KEY_PATH || '').trim();
 const DB_SSL_CERT_PATH = String(process.env.DB_SSL_CERT_PATH || '').trim();
-const DB_SSL_REJECT_UNAUTHORIZED = process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false';
+const DB_SSL_REJECT_UNAUTHORIZED_RAW = pickEnv('DB_SSL_REJECT_UNAUTHORIZED', 'MYSQL_SSL_REJECT_UNAUTHORIZED');
+const DB_SSL_ALLOW_SELF_SIGNED = pickEnv('DB_SSL_ALLOW_SELF_SIGNED', 'MYSQL_SSL_ALLOW_SELF_SIGNED') === 'true';
 const POSTAL_CODE_PATTERN = /^\d{4}$/;
 const ORDER_ID_PATTERN = /^ZM-\d{13}-[A-F0-9]{6}$/;
 const EXTERNAL_REFERENCE_PATTERN = /^ORDER_\d{13}_[A-Z0-9]{6}$/;
@@ -334,6 +377,22 @@ function shouldUseMariaDbTls() {
     return Boolean(DB_HOST) && !isLoopbackHost(DB_HOST);
 }
 
+function shouldRejectUnauthorizedDbSsl() {
+    if (DB_SSL_REJECT_UNAUTHORIZED_RAW) {
+        return String(DB_SSL_REJECT_UNAUTHORIZED_RAW).trim().toLowerCase() !== 'false';
+    }
+
+    if (DB_SSL_ALLOW_SELF_SIGNED) {
+        return false;
+    }
+
+    if (isRailwayRuntime || isRailwayInternalHost(DB_HOST)) {
+        return false;
+    }
+
+    return true;
+}
+
 function readTextFileIfExists(filePath) {
     if (!filePath) {
         return '';
@@ -357,7 +416,7 @@ function buildMariaDbSslConfig() {
 
     const sslConfig = {
         minVersion: 'TLSv1.2',
-        rejectUnauthorized: DB_SSL_REJECT_UNAUTHORIZED
+        rejectUnauthorized: shouldRejectUnauthorizedDbSsl()
     };
     const ca = readTextFileIfExists(DB_SSL_CA_PATH);
     const key = readTextFileIfExists(DB_SSL_KEY_PATH);
@@ -462,25 +521,40 @@ async function initializeMariaDb() {
                 order_id VARCHAR(40) NULL,
                 external_reference VARCHAR(60) NULL,
                 estado VARCHAR(40) NOT NULL DEFAULT 'draft',
+                payment_status VARCHAR(40) NOT NULL DEFAULT 'pending',
+                paid TINYINT(1) NOT NULL DEFAULT 0,
                 fecha_creado TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 fecha_actualizado TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_pedidos_email (email),
                 INDEX idx_pedidos_fecha (fecha_creado),
                 INDEX idx_pedidos_estado (estado),
+                INDEX idx_pedidos_pago (paid),
                 UNIQUE KEY uniq_order_id (order_id)
             ) ENGINE=InnoDB
         `);
         await mariaDbPool.query(
             'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS instalacion DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER envio'
         );
+        await mariaDbPool.query(
+            'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS payment_status VARCHAR(40) NOT NULL DEFAULT \'pending\' AFTER estado'
+        );
+        await mariaDbPool.query(
+            'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS paid TINYINT(1) NOT NULL DEFAULT 0 AFTER payment_status'
+        );
 
         mariaDbEnabled = true;
-        console.log(`🗄️ MariaDB conectada en ${DB_HOST}:${DB_PORT}/${DB_NAME} (TLS: ${shouldUseMariaDbTls() ? 'sí' : 'no'})`);
+        console.log(
+            `✅ DB conectada OK (${DB_HOST}:${DB_PORT}/${DB_NAME}) `
+            + `(TLS: ${shouldUseMariaDbTls() ? 'sí' : 'no'}, rejectUnauthorized: ${ssl?.rejectUnauthorized === false ? 'false' : 'true'})`
+        );
+        if (isRailwayInternalHost(DB_HOST)) {
+            console.log(`🛤️ DB host interno Railway detectado: ${DB_HOST}`);
+        }
         return true;
     } catch (error) {
         mariaDbPool = null;
         mariaDbEnabled = false;
-        console.error(`❌ No se pudo inicializar MariaDB (${error.message})`);
+        console.error(`❌ DB conexión error (${DB_HOST}:${DB_PORT}/${DB_NAME}): ${error.message}`);
         return false;
     }
 }
@@ -2193,7 +2267,39 @@ function normalizeMoneyAmount(value) {
     return Math.round(parsed * 100) / 100;
 }
 
+function normalizePedidoPaymentStatus(value, fallback = 'pending') {
+    const normalized = normalizeText(value, 40).toLowerCase();
+    if (!normalized) {
+        return fallback;
+    }
+
+    return normalized;
+}
+
+function normalizePedidoPaidFlag(value, paymentStatus = 'pending') {
+    if (value === true || value === 1) {
+        return true;
+    }
+
+    const numeric = Number.parseInt(value, 10);
+    if (Number.isInteger(numeric) && numeric > 0) {
+        return true;
+    }
+
+    const stringValue = String(value || '').trim().toLowerCase();
+    if (['true', 'yes', 'si', 'sí', 'paid', 'pagado'].includes(stringValue)) {
+        return true;
+    }
+
+    return ['approved', 'accredited', 'paid', 'authorized'].includes(
+        normalizePedidoPaymentStatus(paymentStatus, 'pending')
+    );
+}
+
 function normalizeDraftPedidoRow(row = {}) {
+    const paymentStatus = normalizePedidoPaymentStatus(row.payment_status || row.paymentStatus, 'pending');
+    const paid = normalizePedidoPaidFlag(row.paid, paymentStatus);
+
     return {
         id: Number.parseInt(row.id, 10) || 0,
         nombre: sanitizeSingleLine(row.nombre, 100),
@@ -2210,6 +2316,8 @@ function normalizeDraftPedidoRow(row = {}) {
         order_id: sanitizeSingleLine(row.order_id, 40),
         external_reference: sanitizeSingleLine(row.external_reference, 60),
         estado: sanitizeSingleLine(row.estado, 40) || 'draft',
+        payment_status: paymentStatus,
+        paid,
         fecha_creado: row.fecha_creado ? new Date(row.fecha_creado).toISOString() : null,
         fecha_actualizado: row.fecha_actualizado ? new Date(row.fecha_actualizado).toISOString() : null
     };
@@ -2224,8 +2332,8 @@ async function insertDraftPedidoInMariaDb(payload = {}) {
     const [result] = await pool.query(
         `INSERT INTO pedidos (
             nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
-            subtotal, envio, instalacion, total, order_id, external_reference, estado
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            subtotal, envio, instalacion, total, order_id, external_reference, estado, payment_status, paid
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             sanitizeSingleLine(payload.nombre, 100),
             sanitizeEmail(payload.email),
@@ -2240,7 +2348,9 @@ async function insertDraftPedidoInMariaDb(payload = {}) {
             normalizeMoneyAmount(payload.total),
             sanitizeSingleLine(payload.order_id, 40) || null,
             sanitizeSingleLine(payload.external_reference, 60) || null,
-            sanitizeSingleLine(payload.estado, 40) || 'draft'
+            sanitizeSingleLine(payload.estado, 40) || 'draft',
+            normalizePedidoPaymentStatus(payload.payment_status, 'pending'),
+            normalizePedidoPaidFlag(payload.paid, payload.payment_status) ? 1 : 0
         ]
     );
 
@@ -2257,7 +2367,7 @@ async function findDraftPedidoByIdInMariaDb(id) {
     const [rows] = await pool.query(
         `SELECT
             id, nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
-            subtotal, envio, instalacion, total, order_id, external_reference, estado, fecha_creado, fecha_actualizado
+            subtotal, envio, instalacion, total, order_id, external_reference, estado, payment_status, paid, fecha_creado, fecha_actualizado
          FROM pedidos
          WHERE id = ?
          LIMIT 1`,
@@ -2281,7 +2391,7 @@ async function findDraftPedidoByOrderIdInMariaDb(orderId) {
     const [rows] = await pool.query(
         `SELECT
             id, nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
-            subtotal, envio, instalacion, total, order_id, external_reference, estado, fecha_creado, fecha_actualizado
+            subtotal, envio, instalacion, total, order_id, external_reference, estado, payment_status, paid, fecha_creado, fecha_actualizado
          FROM pedidos
          WHERE order_id = ?
          LIMIT 1`,
@@ -2305,7 +2415,7 @@ async function updateDraftPedidoInMariaDbById(id, payload = {}) {
     const [result] = await pool.query(
         `UPDATE pedidos
          SET nombre = ?, email = ?, telefono = ?, direccion = ?, ciudad = ?, provincia = ?, codigo_postal = ?,
-             subtotal = ?, envio = ?, instalacion = ?, total = ?, order_id = ?, external_reference = ?, estado = ?
+             subtotal = ?, envio = ?, instalacion = ?, total = ?, order_id = ?, external_reference = ?, estado = ?, payment_status = ?, paid = ?
          WHERE id = ?`,
         [
             sanitizeSingleLine(payload.nombre, 100),
@@ -2322,6 +2432,8 @@ async function updateDraftPedidoInMariaDbById(id, payload = {}) {
             sanitizeSingleLine(payload.order_id, 40) || null,
             sanitizeSingleLine(payload.external_reference, 60) || null,
             sanitizeSingleLine(payload.estado, 40) || 'draft',
+            normalizePedidoPaymentStatus(payload.payment_status, 'pending'),
+            normalizePedidoPaidFlag(payload.paid, payload.payment_status) ? 1 : 0,
             draftId
         ]
     );
@@ -2357,7 +2469,9 @@ async function syncStoreOrderToMariaDb(order, options = {}) {
         total: normalizeMoneyAmount(order?.totals?.total),
         order_id: sanitizeSingleLine(order.orderId, 40),
         external_reference: sanitizeSingleLine(order.externalReference, 60),
-        estado: sanitizeSingleLine(order.fulfillmentStatus || order.checkoutStatus, 40) || 'checkout_created'
+        estado: sanitizeSingleLine(order.fulfillmentStatus || order.checkoutStatus, 40) || 'checkout_created',
+        payment_status: normalizePedidoPaymentStatus(order.paymentStatus, 'pending'),
+        paid: normalizePedidoPaidFlag(order.paid, order.paymentStatus)
     };
 
     const draftOrderId = Number.parseInt(options.draftOrderId, 10);
@@ -2383,17 +2497,19 @@ async function syncStoreOrderToMariaDb(order, options = {}) {
     return insertDraftPedidoInMariaDb(draftPayload);
 }
 
-async function updatePedidoStatusInMariaDb(orderId, status) {
+async function updatePedidoStatusInMariaDb(orderId, status, options = {}) {
     const pool = getMariaDbPoolOrNull();
     const normalizedOrderId = sanitizeSingleLine(orderId, 40);
     const normalizedStatus = sanitizeSingleLine(status, 40);
+    const normalizedPaymentStatus = normalizePedidoPaymentStatus(options.paymentStatus, 'pending');
+    const normalizedPaid = normalizePedidoPaidFlag(options.paid, normalizedPaymentStatus) ? 1 : 0;
     if (!pool || !normalizedOrderId || !normalizedStatus) {
         return 0;
     }
 
     const [result] = await pool.query(
-        'UPDATE pedidos SET estado = ? WHERE order_id = ?',
-        [normalizedStatus, normalizedOrderId]
+        'UPDATE pedidos SET estado = ?, payment_status = ?, paid = ? WHERE order_id = ?',
+        [normalizedStatus, normalizedPaymentStatus, normalizedPaid, normalizedOrderId]
     );
     return Number.parseInt(result.affectedRows, 10) || 0;
 }
@@ -2408,7 +2524,7 @@ async function listDraftPedidosFromMariaDb(limit = 500) {
     const [rows] = await pool.query(
         `SELECT
             id, nombre, email, telefono, direccion, ciudad, provincia, codigo_postal,
-            subtotal, envio, total, order_id, external_reference, estado, fecha_creado, fecha_actualizado
+            subtotal, envio, instalacion, total, order_id, external_reference, estado, payment_status, paid, fecha_creado, fecha_actualizado
          FROM pedidos
          ORDER BY fecha_creado DESC
          LIMIT ?`,
@@ -5737,11 +5853,33 @@ function sortByRecent(left, right) {
 function mapOrderForAdmin(order) {
     const publicOrder = buildPublicOrderPayload(order);
     const customer = order.customerData || {};
+    const itemsSummary = (Array.isArray(order.items) ? order.items : [])
+        .map(item => {
+            const title = sanitizeSingleLine(item?.title || item?.name || item?.productName, 120);
+            if (!title) {
+                return '';
+            }
+
+            const quantity = Math.max(1, Number.parseInt(item?.quantity, 10) || 1);
+            return quantity > 1 ? `${title} x${quantity}` : title;
+        })
+        .filter(Boolean)
+        .slice(0, 5)
+        .join(' · ');
+    const totals = order.totals || {};
+    const shippingAmount = normalizeMoneyAmount(totals.shipping);
+    const installationAmount = normalizeMoneyAmount(totals.installation);
+
     return {
         ...publicOrder,
         customerName: sanitizeSingleLine(customer.fullName, 120) || '',
         customerEmail: sanitizeEmail(customer.email || order.buyerEmail),
-        customerPhone: sanitizeSingleLine(customer.phone, 40) || ''
+        customerPhone: sanitizeSingleLine(customer.phone, 40) || '',
+        itemsSummary: itemsSummary || '',
+        shippingAmount,
+        installationAmount,
+        hasShipping: shippingAmount > 0,
+        hasInstallation: installationAmount > 0
     };
 }
 
@@ -5769,6 +5907,8 @@ function mapStoreOrderToDraftPedidoFallback(order) {
         order_id: sanitizeSingleLine(order.orderId, 40),
         external_reference: sanitizeSingleLine(order.externalReference, 60),
         estado: sanitizeSingleLine(order.fulfillmentStatus || order.checkoutStatus, 40) || 'draft',
+        payment_status: normalizePedidoPaymentStatus(order.paymentStatus, 'pending'),
+        paid: normalizePedidoPaidFlag(order.paid, order.paymentStatus),
         fecha_creado: order.createdAt || null,
         fecha_actualizado: order.updatedAt || order.createdAt || null
     };
@@ -5806,7 +5946,7 @@ app.get('/api/admin/pedidos', requireAllowedOrigin, requireAdminAuth, async (req
 });
 
 app.get('/api/admin/overview', requireAllowedOrigin, requireAdminAuth, (req, res) => {
-    const limit = Math.min(300, Math.max(1, Number.parseInt(req.query?.limit, 10) || 120));
+    const limit = Math.min(1000, Math.max(1, Number.parseInt(req.query?.limit, 10) || 120));
     const orders = readOrdersStore().orders
         .slice()
         .sort(sortByRecent)
@@ -5923,7 +6063,10 @@ app.patch('/api/admin/orders/:orderId/status', requireAllowedOrigin, requireAdmi
         }
 
         try {
-            await updatePedidoStatusInMariaDb(updatedOrder.orderId, nextStatus);
+            await updatePedidoStatusInMariaDb(updatedOrder.orderId, nextStatus, {
+                paymentStatus: updatedOrder.paymentStatus,
+                paid: updatedOrder.paid
+            });
         } catch (databaseError) {
             console.error(`❌ No se pudo sincronizar estado en MariaDB para ${updatedOrder.orderId}: ${databaseError.message}`);
         }

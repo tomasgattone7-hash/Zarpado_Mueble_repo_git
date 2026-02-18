@@ -859,12 +859,12 @@
       "externalReference": "ORDER_1771438761965_B26D76",
       "orderType": "tienda",
       "createdAt": "2026-02-18T18:19:21.966Z",
-      "updatedAt": "2026-02-18T18:19:21.966Z",
+      "updatedAt": "2026-02-18T19:07:46.096Z",
       "paymentMethod": "mercadopago",
       "paymentStatus": "pending",
       "paid": false,
-      "checkoutStatus": "pending_payment",
-      "fulfillmentStatus": "pending_payment",
+      "checkoutStatus": "admin_shipped",
+      "fulfillmentStatus": "shipped",
       "estimatedLeadTime": "Fabricación bajo pedido: entrega estimada entre 10 y 20 días hábiles.",
       "stockReserved": false,
       "timeline": [
@@ -873,6 +873,12 @@
           "label": "Pendiente de pago",
           "note": "Pedido registrado en Mercado Pago",
           "at": "2026-02-18T18:19:22.946Z"
+        },
+        {
+          "status": "shipped",
+          "label": "Despachado",
+          "note": "Estado actualizado desde panel interno: Despachado",
+          "at": "2026-02-18T19:07:46.096Z"
         }
       ],
       "items": [
@@ -953,12 +959,12 @@
       "externalReference": "ORDER_1771439280373_3665AF",
       "orderType": "tienda",
       "createdAt": "2026-02-18T18:28:00.373Z",
-      "updatedAt": "2026-02-18T18:28:00.373Z",
+      "updatedAt": "2026-02-18T19:07:39.561Z",
       "paymentMethod": "mercadopago",
       "paymentStatus": "pending",
       "paid": false,
-      "checkoutStatus": "pending_payment",
-      "fulfillmentStatus": "pending_payment",
+      "checkoutStatus": "admin_delivered",
+      "fulfillmentStatus": "delivered",
       "estimatedLeadTime": "Productos en stock: envío estimado en 48/72 hs hábiles.",
       "stockReserved": false,
       "timeline": [
@@ -967,6 +973,12 @@
           "label": "Pendiente de pago",
           "note": "Pedido registrado en Mercado Pago",
           "at": "2026-02-18T18:28:01.200Z"
+        },
+        {
+          "status": "delivered",
+          "label": "Entregado",
+          "note": "Estado actualizado desde panel interno: Entregado",
+          "at": "2026-02-18T19:07:39.560Z"
         }
       ],
       "items": [
@@ -1041,6 +1053,100 @@
         "paymentStatus": "pending"
       },
       "preferenceId": "3202898734-86d9e5e5-f122-43d5-a4a2-db13889bc108"
+    },
+    {
+      "orderId": "ZM-1771444644961-E70601",
+      "externalReference": "ORDER_1771444658219_81140D",
+      "orderType": "tienda",
+      "createdAt": "2026-02-18T19:57:38.220Z",
+      "updatedAt": "2026-02-18T19:57:38.220Z",
+      "paymentMethod": "mercadopago",
+      "paymentStatus": "pending",
+      "paid": false,
+      "checkoutStatus": "pending_payment",
+      "fulfillmentStatus": "pending_payment",
+      "estimatedLeadTime": "Fabricación bajo pedido: entrega estimada entre 10 y 20 días hábiles.",
+      "stockReserved": false,
+      "timeline": [
+        {
+          "status": "pending_payment",
+          "label": "Pendiente de pago",
+          "note": "Pedido registrado en Mercado Pago",
+          "at": "2026-02-18T19:57:39.033Z"
+        }
+      ],
+      "items": [
+        {
+          "id": "5",
+          "title": "Vajillero Nordico",
+          "description": "Modulo de guardado para cocina/comedor",
+          "quantity": 1,
+          "unit_price": 230000,
+          "fulfillmentModel": "made_to_order",
+          "category": "Cocinas",
+          "weightKg": 52,
+          "volumeM3": 0.41
+        }
+      ],
+      "delivery": {
+        "method": "shipping",
+        "postalCode": "2240",
+        "shippingLabel": "Buenos Aires interior (hasta 120 kg)",
+        "shippingCost": 0,
+        "installationAvailable": false,
+        "installationRequested": false,
+        "installationBaseCost": 200000,
+        "installationCost": 0,
+        "shippingMeta": {
+          "freightTier": "hasta 120 kg",
+          "chargeableWeightKg": 102.5,
+          "totalWeightKg": 52,
+          "totalVolumeM3": 0.41
+        }
+      },
+      "totals": {
+        "subtotal": 230000,
+        "shipping": 0,
+        "installation": 0,
+        "total": 230000
+      },
+      "buyerEmail": "tomasabalero@hotmail.com",
+      "customerData": {
+        "fullName": "tomas",
+        "phone": "1127474780",
+        "email": "tomasabalero@hotmail.com",
+        "documentId": "",
+        "street": "mitre",
+        "streetNumber": "1532",
+        "city": "coronda",
+        "province": "santa fe",
+        "postalCode": "2240",
+        "floorApartment": "",
+        "neighborhood": "",
+        "addressReference": "",
+        "receiverType": "yo",
+        "receiverName": "tomas",
+        "availableSchedule": "",
+        "additionalNotes": ""
+      },
+      "tracking_url": "",
+      "emails_sent": false,
+      "emails_sent_at": null,
+      "mp": {
+        "preferenceId": "3202898734-5569bff2-7a9e-4330-bfd6-6fbd4b010753",
+        "paymentId": "",
+        "merchantOrderId": "",
+        "status": "pending",
+        "statusDetail": "",
+        "externalReference": "ORDER_1771444658219_81140D"
+      },
+      "paymentMeta": {
+        "paymentId": "",
+        "preferenceId": "3202898734-5569bff2-7a9e-4330-bfd6-6fbd4b010753",
+        "merchantOrderId": "",
+        "paymentStatus": "pending"
+      },
+      "preferenceId": "3202898734-5569bff2-7a9e-4330-bfd6-6fbd4b010753"
     }
   ]
 }

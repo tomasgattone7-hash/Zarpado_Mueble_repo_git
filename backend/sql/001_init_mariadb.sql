@@ -15,14 +15,18 @@ CREATE TABLE IF NOT EXISTS pedidos (
   codigo_postal VARCHAR(10) NOT NULL,
   subtotal DECIMAL(12,2) NOT NULL,
   envio DECIMAL(12,2) NOT NULL,
+  instalacion DECIMAL(12,2) NOT NULL DEFAULT 0,
   total DECIMAL(12,2) NOT NULL,
   order_id VARCHAR(40) NULL,
   external_reference VARCHAR(60) NULL,
   estado VARCHAR(40) NOT NULL DEFAULT 'draft',
+  payment_status VARCHAR(40) NOT NULL DEFAULT 'pending',
+  paid TINYINT(1) NOT NULL DEFAULT 0,
   fecha_creado TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_actualizado TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_pedidos_email (email),
   INDEX idx_pedidos_fecha (fecha_creado),
   INDEX idx_pedidos_estado (estado),
+  INDEX idx_pedidos_pago (paid),
   UNIQUE KEY uniq_order_id (order_id)
 ) ENGINE=InnoDB;

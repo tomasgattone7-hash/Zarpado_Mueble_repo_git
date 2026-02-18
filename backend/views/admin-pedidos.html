@@ -8,51 +8,107 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,600;6..72,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.min.css">
+    <link rel="stylesheet" href="/css/admin-dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/2.0.8/css/dataTables.dataTables.min.css">
     <link rel="icon" href="/favicon.ico">
 </head>
 
-<body data-cart="off">
-    <main class="section checkout-flow-section">
-        <div class="container">
-            <article class="checkout-flow-card">
-                <span class="section-tag">Panel interno</span>
-                <h1 class="section-title checkout-flow-title">Pedidos guardados</h1>
-                <p class="section-desc checkout-flow-desc">Vista operativa de pedidos con búsqueda, orden, paginación y exportación CSV.</p>
+<body class="admin-dashboard-body" data-cart="off">
+    <!-- MODIFICACIONES PANEL ADMIN: layout dashboard + métricas -->
+    <div class="admin-dashboard-shell" aria-label="Panel administrativo">
+        <aside id="admin-dashboard-sidebar" class="admin-dashboard-sidebar" aria-label="Navegación del panel">
+            <div class="admin-sidebar-brand">
+                <img src="/assets/logo_blanco.svg" class="admin-sidebar-brand-logo" alt="Logo Zarpado Mueble">
+                <div class="admin-sidebar-brand-copy">
+                    <p class="admin-sidebar-brand-title">Zarpado Mueble</p>
+                </div>
+            </div>
 
-                <div class="shipping-data-grid" style="margin-bottom: 1rem;">
-                    <div class="form-group">
-                        <button id="admin-refresh-btn" type="button" class="btn btn-primary">Actualizar</button>
+            <nav class="admin-sidebar-nav" aria-label="Módulos">
+                <button
+                    type="button"
+                    class="admin-sidebar-link is-active"
+                    data-panel-target="pedidos"
+                    aria-current="page"
+                >
+                    <span class="admin-sidebar-link-icon" aria-hidden="true">📦</span>
+                    <span class="admin-sidebar-link-label">Pedidos</span>
+                </button>
+                <button
+                    id="admin-metrics-nav-btn"
+                    type="button"
+                    class="admin-sidebar-link"
+                    data-panel-target="metricas"
+                >
+                    <span class="admin-sidebar-link-icon" aria-hidden="true">📈</span>
+                    <span class="admin-sidebar-link-label">Métricas</span>
+                </button>
+            </nav>
+
+            <a href="/admin/logout" class="admin-sidebar-logout">
+                <span class="admin-sidebar-link-label">Cerrar sesión</span>
+            </a>
+        </aside>
+
+        <main class="admin-dashboard-main">
+            <header class="admin-dashboard-header">
+                <div class="admin-dashboard-header-icon" aria-hidden="true">🧾</div>
+                <div>
+                    <p class="admin-dashboard-eyebrow">Gestión administrativa</p>
+                    <h1 id="admin-panel-title" class="admin-dashboard-title">Dashboard de pedidos</h1>
+                    <p id="admin-panel-description" class="admin-dashboard-description">
+                        Vista operativa de pedidos con filtros por estado, cambio rápido de estado y exportación CSV.
+                    </p>
+                </div>
+                <button
+                    id="admin-sidebar-toggle-btn"
+                    type="button"
+                    class="admin-sidebar-toggle-btn"
+                    aria-controls="admin-dashboard-sidebar"
+                    aria-expanded="true"
+                    aria-label="Ocultar panel interno"
+                    title="Ocultar panel interno"
+                >
+                    <span aria-hidden="true">⇤</span>
+                    <span class="admin-sidebar-toggle-label">Ocultar panel</span>
+                </button>
+            </header>
+
+            <p id="admin-orders-feedback" class="checkout-flow-feedback admin-dashboard-feedback" aria-live="polite"></p>
+
+            <section id="admin-panel-pedidos" class="admin-dashboard-panel" aria-labelledby="admin-orders-heading">
+                <h2 id="admin-orders-heading" class="admin-sr-only">Dashboard de pedidos</h2>
+
+                <div class="admin-orders-toolbar">
+                    <div class="admin-orders-actions">
+                        <button id="admin-refresh-btn" type="button" class="btn btn-primary admin-dashboard-btn">Actualizar</button>
+                        <button id="admin-export-csv-btn" type="button" class="btn btn-outline admin-dashboard-btn">Exportar CSV</button>
                     </div>
-                    <div class="form-group">
-                        <button id="admin-export-csv-btn" type="button" class="btn btn-outline">Exportar CSV</button>
-                    </div>
-                    <div class="form-group">
-                        <a href="/admin/logout" class="btn btn-outline">Cerrar sesión</a>
+                    <div class="admin-orders-filters" role="group" aria-label="Filtrar pedidos por estado">
+                        <button type="button" class="admin-filter-btn is-active" data-status-filter="all">Todos</button>
+                        <button type="button" class="admin-filter-btn" data-status-filter="pending">Pendientes</button>
+                        <button type="button" class="admin-filter-btn" data-status-filter="shipped">Enviados</button>
+                        <button type="button" class="admin-filter-btn" data-status-filter="closed">Cerrados</button>
                     </div>
                 </div>
 
-                <p id="admin-orders-feedback" class="checkout-flow-feedback" aria-live="polite"></p>
-
-                <div class="table-responsive" style="overflow-x:auto;">
-                    <table id="admin-orders-table" class="display" style="width:100%">
+                <div class="admin-orders-table-wrap" role="region" aria-label="Tabla de pedidos">
+                    <table id="admin-orders-table" class="display admin-orders-table" style="width:100%">
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Mueble</th>
                                 <th>Fecha</th>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                                <th>Teléfono</th>
-                                <th>Dirección</th>
-                                <th>Ciudad</th>
-                                <th>Provincia</th>
-                                <th>CP</th>
-                                <th>Subtotal</th>
-                                <th>Envío</th>
                                 <th>Total</th>
+                                <th>Envío</th>
+                                <th>Instalación</th>
+                                <th>Dirección</th>
                                 <th>Estado</th>
+                                <th>Pago</th>
+                                <th>Cambiar estado</th>
                                 <th>Order ID</th>
                                 <th>Referencia</th>
                             </tr>
@@ -60,11 +116,57 @@
                         <tbody id="admin-orders-table-body"></tbody>
                     </table>
                 </div>
-            </article>
-        </div>
-    </main>
+            </section>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/2.0.8/dataTables.min.js"></script>
+            <section id="admin-panel-metricas" class="admin-dashboard-panel" aria-labelledby="admin-metrics-heading" hidden>
+                <header class="admin-metrics-header">
+                    <h2 id="admin-metrics-heading">Panel de métricas</h2>
+                    <p>Indicadores clave de ventas y evolución mensual para seguimiento comercial.</p>
+                </header>
+
+                <div class="admin-metrics-cards">
+                    <article class="admin-metric-card" data-stagger="1">
+                        <p class="admin-metric-label">Ingresos totales</p>
+                        <p id="admin-metric-revenue" class="admin-metric-value">$0</p>
+                        <p id="admin-metric-revenue-delta" class="admin-metric-delta">
+                            <span id="admin-metric-revenue-trend-icon" aria-hidden="true">•</span>
+                            <span id="admin-metric-revenue-trend-text">0% vs mes anterior</span>
+                        </p>
+                    </article>
+                    <article class="admin-metric-card" data-stagger="2">
+                        <p class="admin-metric-label">Ventas cobradas</p>
+                        <p id="admin-metric-orders" class="admin-metric-value">0</p>
+                        <p class="admin-metric-subtext">Pedidos con pago confirmado</p>
+                    </article>
+                    <article class="admin-metric-card" data-stagger="3">
+                        <p class="admin-metric-label">Ticket promedio</p>
+                        <p id="admin-metric-average-ticket" class="admin-metric-value">$0</p>
+                        <p class="admin-metric-subtext">Ingresos / cantidad de pedidos</p>
+                    </article>
+                </div>
+
+                <div class="admin-charts-grid">
+                    <article class="admin-chart-card" data-stagger="4">
+                        <h3>Evolución de ventas (12 meses)</h3>
+                        <div class="admin-chart-canvas-wrap">
+                            <canvas id="admin-sales-trend-chart" role="img" aria-label="Evolución de ventas de los últimos doce meses"></canvas>
+                        </div>
+                    </article>
+
+                    <article class="admin-chart-card" data-stagger="5">
+                        <h3>Pedidos por estado</h3>
+                        <div class="admin-chart-canvas-wrap admin-chart-canvas-wrap-donut">
+                            <canvas id="admin-orders-status-chart" role="img" aria-label="Proporción de pedidos por estado"></canvas>
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/2.0.8/dataTables.min.js" defer></script>
+    <!-- Dependencia para gráficos del panel de métricas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
     <script src="/js/admin-pedidos.js" defer></script>
 </body>
 
