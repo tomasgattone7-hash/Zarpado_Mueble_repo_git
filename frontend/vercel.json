@@ -2,6 +2,8 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://api.zarpadomueble.com/:path*" },
     { "source": "/admin/:path*", "destination": "https://api.zarpadomueble.com/admin/:path*" },
-    { "source": "/admin", "destination": "https://api.zarpadomueble.com/admin" }
+    { "source": "/admin", "destination": "https://api.zarpadomueble.com/admin" },
+
+    { "source": "/:page", "destination": "/pages/:page.html" }
   ]
 }
